@@ -1,0 +1,61 @@
+services:
+  orbital:
+    build: .
+    container_name: orbital-industries
+    ports:
+      - "5001:5000"
+    env_file:
+      - .env
+    environment:
+      - SECRET_KEY=change-me
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=orbital2024
+      - WHOISXML_API_KEY=
+      - WEBHOOK_TELEGRAM_URL=
+      - PIPELINE_MAX_CONCURRENT=1
+      - PIPELINE_BATCH_SIZE=5
+      - AI_PROVIDER=ollama
+      - AI_MODEL=llama3.1:8b
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    volumes:
+      - ./browser_data:/app/browser_data
+      - ./static/screenshots:/app/static/screenshots
+      - ./logs:/app/logs
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    mem_limit: 6g
+    cpus: 2
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+          cpus: '2'
+        reservations:
+          memory: 4G
+          cpus: '1.5'
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    container_name: orbital-db-2
+    environment:
+      - POSTGRES_USER=orbital
+      - POSTGRES_PASSWORD=orbital
+      - POSTGRES_DB=orbital
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbital -d orbital"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

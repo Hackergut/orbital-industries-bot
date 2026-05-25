@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbital Industries — Admin</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121826;
+      --panel-2: #0f172a;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #ef4444;
+      --accent-2: #f97316;
+      --green: #22c55e;
+      --yellow: #facc15;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 18px 28px;
+      background: linear-gradient(135deg, #0f172a, #111827);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .title strong { font-size: 18px; letter-spacing: 0.4px; }
+    .title span { font-size: 12px; color: var(--muted); }
+    .actions { display: flex; align-items: center; gap: 12px; }
+    .btn {
+      padding: 10px 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn.secondary { background: #1f2937; color: var(--text); }
+    .chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #111827;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .container {
+      padding: 20px 28px 32px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 0 0 1px rgba(31, 41, 55, 0.15);
+    }
+    .card h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .stat .label { font-size: 11px; color: var(--muted); }
+    .stat .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .form-row { display: flex; gap: 8px; margin-top: 10px; }
+    input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .badge { padding: 4px 8px; border-radius: 999px; font-size: 11px; display: inline-block; }
+    .badge.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge.warn { background: rgba(250,204,21,0.15); color: var(--yellow); }
+    .badge.err { background: rgba(239,68,68,0.15); color: var(--red); }
+    .browser {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+    }
+    .grid-full { grid-column: 1 / -1; }
+    .muted { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <strong>Orbital Industries — Control Center</strong>
+      <span>Autonomous contact-form pipeline · live verification enabled</span>
+    </div>
+    <div class="actions">
+      <span class="chip">Admin</span>
+      <button class="btn" onclick="startPipeline()">Start Pipeline</button>
+      <a href="/logout" class="btn secondary">Logout</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h3>Pipeline Status</h3>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Processed</div>
+          <div class="value" id="statProcessed">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Submitted</div>
+          <div class="value" id="statSubmitted">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Failed</div>
+          <div class="value" id="statFailed">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Rate / Hour</div>
+          <div class="value" id="statRate">0</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <input id="targetUrl" placeholder="Add target URL" />
+        <button class="btn" onclick="addTarget()">Add</button>
+      </div>
+      <div class="form-row">
+        <button class="btn secondary" onclick="navigateBrowser()">Open in Browser</button>
+      </div>
+      <div class="muted" style="margin-top:10px;">Browser stays open after submit for verification.</div>
+    </div>
+
+    <div class="card">
+      <h3>Live Browser (click to control)</h3>
+      <img id="browserImg" class="browser" src="/api/browser/screenshot" />
+      <div class="muted" id="browserSession" style="margin-top:6px;">Session: default</div>
+      <div class="muted" id="browserUrl" style="margin-top:4px;">URL: —</div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Targets</h3>
+      <table>
+        <thead><tr><th>ID</th><th>URL</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for t in targets %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td>{{ t.url }}</td>
+            <td>
+              {% if t.status == 'submitted' %}
+                <span class="badge ok">submitted</span>
+              {% elif t.status in ['error', 'submit_not_found'] %}
+                <span class="badge err">{{ t.status }}</span>
+              {% else %}
+                <span class="badge warn">{{ t.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Recent Submissions</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Target</th><th>Status</th><th>Fields</th></tr></thead>
+        <tbody>
+        {% for s in submissions %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.target_id }}</td>
+            <td>
+              {% if s.status == 'submitted' %}
+                <span class="badge ok">submitted</span>
+              {% elif s.status == 'submit_not_found' %}
+                <span class="badge err">submit_not_found</span>
+              {% else %}
+                <span class="badge warn">{{ s.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ s.fields_filled }}/{{ s.fields_total }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function startPipeline() {
+      await fetch('/api/pipeline/start', { method: 'POST' });
+    }
+    async function addTarget() {
+      const url = document.getElementById('targetUrl').value.trim();
+      if (!url) return;
+      await fetch('/api/targets/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      location.reload();
+    }
+    async function navigateBrowser() {
+      const url = document.getElementById('targetUrl').value.trim();
+      if (!url) return;
+      await fetch('/api/browser/navigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+    }
+    function renderStats(data) {
+      document.getElementById('statProcessed').textContent = data.processed || 0;
+      document.getElementById('statSubmitted').textContent = data.submitted || 0;
+      document.getElementById('statFailed').textContent = data.failed || 0;
+      document.getElementById('statRate').textContent = data.rate_per_hour || 0;
+    }
+    async function refresh() {
+      const res = await fetch('/api/pipeline/status');
+      if (res.ok) {
+        const data = await res.json();
+        renderStats(data);
+      }
+      const sessionRes = await fetch('/api/browser/session');
+      if (sessionRes.ok) {
+        const s = await sessionRes.json();
+        document.getElementById('browserSession').textContent = 'Session: ' + (s.session_id || 'default');
+      }
+      const urlRes = await fetch('/api/browser/url');
+      if (urlRes.ok) {
+        const u = await urlRes.json();
+        document.getElementById('browserUrl').textContent = 'URL: ' + (u.url || '');
+      }
+      document.getElementById('browserImg').src = '/api/browser/screenshot?ts=' + Date.now();
+    }
+
+    async function clickBrowser(event) {
+      const img = event.target;
+      const rect = img.getBoundingClientRect();
+      const scaleX = img.naturalWidth / rect.width;
+      const scaleY = img.naturalHeight / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+      const sessionRes = await fetch('/api/browser/session');
+      let sessionId = 'default';
+      if (sessionRes.ok) {
+        const s = await sessionRes.json();
+        sessionId = s.session_id || 'default';
+      }
+      await fetch('/api/browser/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x, y, session_id: sessionId })
+      });
+    }
+    renderStats({{ pipeline | tojson }});
+    document.getElementById('browserImg').addEventListener('click', clickBrowser);
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>

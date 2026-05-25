@@ -1,0 +1,3 @@
+2026/05/25-03:40:37.139 1d Creating DB /app/browser_data/Default/IndexedDB/https_www.ipp.gov_0.indexeddb.leveldb since it was missing.
+2026/05/25-03:40:37.146 1d Reusing MANIFEST /app/browser_data/Default/IndexedDB/https_www.ipp.gov_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/25-03:41:04.848 28 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

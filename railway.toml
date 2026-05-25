@@ -1,0 +1,14 @@
+[build]
+builder = "dockerfile"
+dockerfile = "Dockerfile"
+
+[deploy]
+numReplicas = 1
+startCommand = "gunicorn -w 1 -b 0.0.0.0:5000 run:app"
+healthcheckPath = "/"
+healthcheckInterval = 10
+healthcheckTimeout = 5
+
+[[services]]
+name = "orbital-api"
+priority = 100
