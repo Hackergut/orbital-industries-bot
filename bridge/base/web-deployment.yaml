@@ -1,0 +1,76 @@
+#! web-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: web
+    namespace: orbitaltech2
+    labels:
+        com.docker.compose.project: orbitaltech2
+        com.docker.compose.service: web
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: orbitaltech2
+            com.docker.compose.service: web
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: orbitaltech2
+                com.docker.compose.service: web
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: web
+                  image: orbitaltech2-web
+                  imagePullPolicy: IfNotPresent
+                  args:
+                    - python
+                    - run.py
+                  env:
+                    - name: AI_MODEL
+                      value: "llama3.1:8b"
+                    - name: AI_PROVIDER
+                      value: "ollama"
+                    - name: BROWSER_HEADLESS
+                      value: "true"
+                    - name: BROWSER_POOL_SIZE
+                      value: "1"
+                    - name: DATABASE_URL
+                      value: "sqlite:///instance/orbital.db"
+                    - name: DISABLE_LLM_FORMS
+                      value: "false"
+                    - name: OLLAMA_HOST
+                      value: "http://host.docker.internal:11434"
+                    - name: REDIS_URL
+                      value: "redis://redis:6379/0"
+                    - name: UVICORN_WORKERS
+                      value: "1"
+                  ports:
+                    - name: web-5000
+                      containerPort: 5000
+                  volumeMounts:
+                    - name: app-static
+                      mountPath: /app/static
+                    - name: app-logs
+                      mountPath: /app/logs
+                    - name: app-browser-data
+                      mountPath: /app/browser_data
+                    - name: app-instance
+                      mountPath: /app/instance
+            volumes:
+                - name: app-static
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/static
+                - name: app-logs
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/logs
+                - name: app-browser-data
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/browser_data
+                - name: app-instance
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/instance

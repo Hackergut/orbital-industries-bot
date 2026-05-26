@@ -1,0 +1,8 @@
+#! 0-orbitaltech2-namespace.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: orbitaltech2
+    labels:
+        com.docker.compose.project: orbitaltech2

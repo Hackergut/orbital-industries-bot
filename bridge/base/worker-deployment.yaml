@@ -1,0 +1,82 @@
+#! worker-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: worker
+    namespace: orbitaltech2
+    labels:
+        com.docker.compose.project: orbitaltech2
+        com.docker.compose.service: worker
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: orbitaltech2
+            com.docker.compose.service: worker
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: orbitaltech2
+                com.docker.compose.service: worker
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: worker
+                  image: orbitaltech2-worker
+                  imagePullPolicy: IfNotPresent
+                  args:
+                    - python
+                    - pipeline_runner.py
+                  env:
+                    - name: AI_MODEL
+                      value: "llama3.1:8b"
+                    - name: AI_PROVIDER
+                      value: "ollama"
+                    - name: BROWSER_HEADLESS
+                      value: "true"
+                    - name: BROWSER_POOL_SIZE
+                      value: "1"
+                    - name: DATABASE_URL
+                      value: "sqlite:///instance/orbital.db"
+                    - name: DISABLE_LLM_FORMS
+                      value: "false"
+                    - name: OLLAMA_HOST
+                      value: "http://host.docker.internal:11434"
+                    - name: PIPELINE_BATCH_SIZE
+                      value: "10"
+                    - name: PIPELINE_INTERVAL
+                      value: "120"
+                    - name: PIPELINE_MAX_CONCURRENT
+                      value: "2"
+                    - name: PIPELINE_TARGET_DAILY
+                      value: "100"
+                    - name: REDIS_URL
+                      value: "redis://redis:6379/0"
+                  ports:
+                    - name: worker-5000
+                      containerPort: 5000
+                  volumeMounts:
+                    - name: app-static
+                      mountPath: /app/static
+                    - name: app-logs
+                      mountPath: /app/logs
+                    - name: app-browser-data
+                      mountPath: /app/browser_data
+                    - name: app-instance
+                      mountPath: /app/instance
+            volumes:
+                - name: app-static
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/static
+                - name: app-logs
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/logs
+                - name: app-browser-data
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/browser_data
+                - name: app-instance
+                  hostPath:
+                    path: /Volumes/HRD2T/ORBITAL TECH 2/instance

@@ -2,32 +2,50 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+# Install system deps for Playwright + virtual display
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
     libnss3 \
-    libatk1.0-0 \
     libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
     libxcomposite1 \
     libxdamage1 \
-    libxfixes3 \
     libxrandr2 \
     libgbm1 \
     libasound2 \
     libpangocairo-1.0-0 \
-    libpango-1.0-0 \
+    libxshmfence1 \
     libgtk-3-0 \
+    xdg-utils \
+    xvfb \
+    fluxbox \
+    scrot \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt \
-    && python -m playwright install chromium
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+# Install Playwright browsers
+RUN python -m playwright install chromium
+RUN python -m playwright install-deps chromium
+
+# Copy app code
+COPY . .
+
+# Create directories
+RUN mkdir -p static/screenshots logs browser_data instance
+
+# Environment
+ENV PYTHONUNBUFFERED=1
+ENV BROWSER_HEADLESS=true
+ENV BROWSER_POOL_SIZE=2
+ENV PIPELINE_MAX_CONCURRENT=2
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "run:app"]
+# Default: run web server
+CMD ["python", "run.py"]

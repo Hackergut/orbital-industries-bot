@@ -18,6 +18,7 @@ def search_firecrawl(query, limit=10):
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"query": query, "limit": limit},
                 timeout=30,
+                verify=False,
             )
             data = r.json()
             if data.get("success") and data.get("data"):

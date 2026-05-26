@@ -1,24 +1,21 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbital Industries — Login</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #0b0b0b; color: #e5e7eb; display:flex; align-items:center; justify-content:center; height:100vh; }
-    .card { background:#111827; padding:24px; border-radius:10px; width:360px; box-shadow:0 0 0 1px #1f2937; }
-    input { width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #374151; background:#0f172a; color:#e5e7eb; }
-    button { width:100%; padding:10px; background:#ef4444; border:none; border-radius:6px; color:white; font-weight:600; }
-    .error { color:#fca5a5; margin-top:8px; }
-  </style>
-</head>
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbital Login</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0e27;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+.card{background:#1a1e3f;border:1px solid #00ff88;border-radius:8px;padding:32px;width:320px}
+h2{color:#00ff88;margin-bottom:20px;text-align:center}
+input{width:100%;padding:10px;margin:8px 0;border:1px solid #333;background:#0a0e27;color:#fff;border-radius:4px;box-sizing:border-box}
+button{width:100%;padding:12px;background:#00ff88;color:#0a0e27;border:none;border-radius:4px;font-weight:bold;cursor:pointer}
+.error{color:#ff3333;font-size:14px;margin-top:8px;text-align:center}
+</style></head>
 <body>
-  <form class="card" method="post">
-    <h2>Orbital Industries</h2>
-    <input name="username" placeholder="Username" />
-    <input name="password" type="password" placeholder="Password" />
-    <button type="submit">Login</button>
-    {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  </form>
-</body>
-</html>
+<div class="card"><h2>Orbital Login</h2>
+<form method="post" action="/login">
+<input type="text" name="username" placeholder="Username" required>
+<input type="password" name="password" placeholder="Password" required>
+<button type="submit">Login</button>
+</form>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+</div></body></html>

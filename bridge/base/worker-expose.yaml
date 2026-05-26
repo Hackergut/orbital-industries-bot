@@ -1,0 +1,18 @@
+#! worker-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker
+    namespace: orbitaltech2
+    labels:
+        com.docker.compose.project: orbitaltech2
+        com.docker.compose.service: worker
+spec:
+    selector:
+        com.docker.compose.project: orbitaltech2
+        com.docker.compose.service: worker
+    ports:
+        - name: worker-5000
+          port: 5000
+          targetPort: worker-5000

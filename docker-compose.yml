@@ -1,61 +1,72 @@
-services:
-  orbital:
-    build: .
-    container_name: orbital-industries
-    ports:
-      - "5001:5000"
-    env_file:
-      - .env
-    environment:
-      - SECRET_KEY=change-me
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=orbital2024
-      - WHOISXML_API_KEY=
-      - WEBHOOK_TELEGRAM_URL=
-      - PIPELINE_MAX_CONCURRENT=1
-      - PIPELINE_BATCH_SIZE=5
-      - AI_PROVIDER=ollama
-      - AI_MODEL=llama3.1:8b
-      - OLLAMA_HOST=http://host.docker.internal:11434
-    volumes:
-      - ./browser_data:/app/browser_data
-      - ./static/screenshots:/app/static/screenshots
-      - ./logs:/app/logs
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
-    mem_limit: 6g
-    cpus: 2
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-          cpus: '2'
-        reservations:
-          memory: 4G
-          cpus: '1.5'
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
+version: "3.9"
 
-  db:
-    image: postgres:16
-    container_name: orbital-db-2
-    environment:
-      - POSTGRES_USER=orbital
-      - POSTGRES_PASSWORD=orbital
-      - POSTGRES_DB=orbital
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orbital -d orbital"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+services:
+  redis:
+    image: redis:7-alpine
     restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/instance/orbital.db
+      - FIRECRAWL_API_KEY=fc-2c1b2acba3dc4c3f80a2dd91c679a471
+      - UVICORN_WORKERS=1
+      - BROWSER_POOL_SIZE=1
+      - BROWSER_HEADLESS=true
+      - DISABLE_LLM_FORMS=false
+      - AI_PROVIDER=ollama
+      - AI_MODEL=llama3:latest
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    depends_on:
+      - redis
+    volumes:
+      - ./static:/app/static
+      - ./logs:/app/logs
+      - ./browser_data:/app/browser_data
+      - db_data:/app/instance
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["python", "run.py"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/instance/orbital.db
+      - FIRECRAWL_API_KEY=fc-2c1b2acba3dc4c3f80a2dd91c679a471
+      - BROWSER_POOL_SIZE=3
+      - BROWSER_HEADLESS=false
+      - DISPLAY=:99
+      - PIPELINE_MAX_CONCURRENT=3
+      - PIPELINE_BATCH_SIZE=15
+      - PIPELINE_TARGET_DAILY=500
+      - DISABLE_LLM_FORMS=false
+      - AI_PROVIDER=ollama
+      - AI_MODEL=llama3:latest
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - PIPELINE_INTERVAL=60
+      - KEEP_OPEN_SECONDS=20
+    depends_on:
+      - redis
+      - web
+    volumes:
+      - ./static:/app/static
+      - ./logs:/app/logs
+      - ./browser_data:/app/browser_data
+      - db_data:/app/instance
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["./worker_start.sh"]
 
 volumes:
-  postgres_data:
+  redis_data:
+  db_data:

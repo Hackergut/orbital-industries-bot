@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 from flask import Flask
@@ -35,6 +36,21 @@ def create_app():
         from app.routes import register_routes
         register_routes(app)
         _wait_for_db()
+        # Ensure instance directory exists for SQLite
+        db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+        if db_uri.startswith("sqlite:///"):
+            db_path = db_uri.replace("sqlite:///", "")
+            db_dir = os.path.dirname(db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+            # Enable WAL mode for better concurrency
+            try:
+                from sqlalchemy import text
+                with db.engine.connect() as conn:
+                    conn.execute(text("PRAGMA journal_mode=WAL"))
+                    conn.execute(text("PRAGMA synchronous=NORMAL"))
+            except Exception:
+                pass
         db.create_all()
 
     return app

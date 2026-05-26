@@ -80,6 +80,8 @@ class BrowserManager:
         return future.result(timeout=60)
 
     def _launch_browser(self):
+        if threading.current_thread() is not self._worker_thread:
+            return self._run_on_worker(self._launch_browser)
         if self._playwright is None:
             self._playwright = sync_playwright().start()
 
@@ -161,6 +163,8 @@ class BrowserManager:
         logger.info("Browser launched (persistent context)")
 
     def _ensure_browser(self):
+        if threading.current_thread() is not self._worker_thread:
+            return self._run_on_worker(self._ensure_browser)
         if self._persist_ctx:
             try:
                 _ = self._persist_ctx.pages
@@ -182,16 +186,49 @@ class BrowserManager:
             return False
 
     def _create_context(self, session_id):
+        if threading.current_thread() is not self._worker_thread:
+            return self._run_on_worker(self._create_context, session_id)
         if self._persist_ctx:
-            page = self._persist_ctx.new_page()
             try:
-                page.goto(Config.BROWSER_START_URL, wait_until="domcontentloaded", timeout=15000)
-            except Exception:
-                pass
-            self._contexts[session_id] = self._persist_ctx
-            self._pages[session_id] = page
-            return self._persist_ctx
+                page = self._persist_ctx.new_page()
+                try:
+                    page.goto(Config.BROWSER_START_URL, wait_until="domcontentloaded", timeout=15000)
+                except Exception:
+                    pass
+                self._contexts[session_id] = self._persist_ctx
+                self._pages[session_id] = page
+                return self._persist_ctx
+            except Exception as e:
+                logger.warning("Context creation failed, restarting browser: %s", e)
+                self._restart_browser()
+                if self._persist_ctx:
+                    try:
+                        page = self._persist_ctx.new_page()
+                        self._contexts[session_id] = self._persist_ctx
+                        self._pages[session_id] = page
+                        return self._persist_ctx
+                    except Exception:
+                        pass
         return None
+
+    def _restart_browser(self):
+        """Kill and restart the browser after crash."""
+        try:
+            if self._persist_ctx:
+                self._persist_ctx.close()
+        except Exception:
+            pass
+        self._persist_ctx = None
+        self._contexts.clear()
+        self._pages.clear()
+        try:
+            if self._playwright:
+                self._playwright.stop()
+        except Exception:
+            pass
+        self._playwright = None
+        self._launch_browser()
+        logger.info("Browser restarted after crash")
 
     def _get_page_impl(self, session_id):
         if not self._ensure_browser():
@@ -199,9 +236,24 @@ class BrowserManager:
         self._last_session_id = session_id
         if session_id not in self._contexts:
             self._create_context(session_id)
-        ctx = self._contexts[session_id]
-        if session_id in self._pages:
-            return self._pages[session_id]
+        try:
+            ctx = self._contexts[session_id]
+            if session_id in self._pages:
+                page = self._pages[session_id]
+                # Verify page is alive
+                page.url  # This throws if page is closed
+                return page
+        except Exception:
+            logger.warning("Page/context dead for session %s, recreating", session_id)
+            # Clean up dead session
+            self._contexts.pop(session_id, None)
+            self._pages.pop(session_id, None)
+            self._create_context(session_id)
+
+        ctx = self._contexts.get(session_id)
+        if not ctx:
+            self._create_context(session_id)
+            ctx = self._contexts[session_id]
         if ctx.pages:
             self._pages[session_id] = ctx.pages[0]
             return ctx.pages[0]
@@ -248,44 +300,99 @@ class BrowserManager:
     def detect_fields(self, session_id="default"):
         page = self._get_page_impl(session_id)
         try:
-            fields = page.query_selector_all("input:not([type=hidden]),textarea,select")
-            result = []
-            for idx, el in enumerate(fields):
-                try:
-                    label_text = page.evaluate(
-                        "el => { let l = ''; if(el.id) { const lab = document.querySelector('label[for=\"'+el.id+'\"]'); if(lab) l = lab.innerText.trim(); } if(!l) { const p = el.closest('label,div,p'); if(p) l = p.innerText.split('\\n')[0].trim().substring(0,120); } return l; }",
-                        el
-                    )
-                except Exception:
-                    label_text = ""
-                
-                try:
-                    field_type = el.get_attribute("type") or ""
-                    field_name = el.get_attribute("name") or ""
-                    field_id = el.get_attribute("id") or ""
-                    placeholder = el.get_attribute("placeholder") or ""
-                    required = el.get_attribute("required") is not None
-                    
-                    result.append({
-                        "index": idx,
-                        "tag": el.evaluate("el => el.tagName.toLowerCase()"),
-                        "type": field_type,
-                        "name": field_name,
-                        "id": field_id,
-                        "placeholder": placeholder,
-                        "aria_label": el.get_attribute("aria-label") or "",
-                        "label_text": label_text,
-                        "required": required,
-                    })
-                except Exception as e:
-                    logger.debug(f"Error processing field {idx}: {e}")
-                    continue
-            
-            logger.info(f"Detected {len(result)} fields")
-            return result
+            fields = page.eval_on_selector_all(
+                "input:not([type=hidden]),textarea,select",
+                """els => els.map((el, idx) => {
+                    let label = '';
+                    if (el.id) {
+                        const l = document.querySelector('label[for="' + el.id + '"]');
+                        if (l) label = l.innerText.trim();
+                    }
+                    if (!label) {
+                        const p = el.closest('label,div,p,fieldset');
+                        if (p) label = p.innerText.split(String.fromCharCode(10))[0].trim().substring(0, 120);
+                    }
+                    const tag = el.tagName.toLowerCase();
+                    let selector;
+                    if (el.id) {
+                        selector = tag + '#' + CSS.escape(el.id);
+                    } else if (el.name) {
+                        selector = tag + '[name="' + CSS.escape(el.name) + '"]';
+                    } else if (el.placeholder) {
+                        selector = tag + '[placeholder="' + CSS.escape(el.placeholder) + '"]';
+                    } else {
+                        selector = tag + ':nth-of-type(' + (idx + 1) + ')';
+                    }
+                    return {
+                        index: idx,
+                        tag: tag,
+                        type: el.type || '',
+                        name: el.name || '',
+                        id: el.id || '',
+                        placeholder: el.placeholder || '',
+                        aria_label: el.getAttribute('aria-label') || '',
+                        label_text: label,
+                        required: !!el.required,
+                        selector: selector,
+                    };
+                })""",
+            )
+            if fields:
+                return fields
         except Exception as e:
-            logger.warning(f"Field detection failed: {e}")
-            return []
+            logger.warning("Field detection failed (main frame): %s", e)
+
+        try:
+            for frame_idx, frame in enumerate(page.frames):
+                if frame == page.main_frame:
+                    continue
+                try:
+                    frame_fields = frame.eval_on_selector_all(
+                        "input:not([type=hidden]),textarea,select",
+                        """els => els.map((el, idx) => {
+                            let label = '';
+                            if (el.id) {
+                                const l = document.querySelector('label[for="' + el.id + '"]');
+                                if (l) label = l.innerText.trim();
+                            }
+                            if (!label) {
+                                const p = el.closest('label,div,p,fieldset');
+                                if (p) label = p.innerText.split(String.fromCharCode(10))[0].trim().substring(0, 120);
+                            }
+                            const tag = el.tagName.toLowerCase();
+                            let selector;
+                            if (el.id) {
+                                selector = tag + '#' + CSS.escape(el.id);
+                            } else if (el.name) {
+                                selector = tag + '[name="' + CSS.escape(el.name) + '"]';
+                            } else if (el.placeholder) {
+                                selector = tag + '[placeholder="' + CSS.escape(el.placeholder) + '"]';
+                            } else {
+                                selector = tag + ':nth-of-type(' + (idx + 1) + ')';
+                            }
+                            return {
+                                index: idx,
+                                tag: tag,
+                                type: el.type || '',
+                                name: el.name || '',
+                                id: el.id || '',
+                                placeholder: el.placeholder || '',
+                                aria_label: el.getAttribute('aria-label') || '',
+                                label_text: label,
+                                required: !!el.required,
+                                selector: selector,
+                                frame_index: %d,
+                            };
+                        })""" % frame_idx,
+                    )
+                    if frame_fields:
+                        return frame_fields
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.warning("Field detection failed (iframes): %s", e)
+
+        return []
 
     @_on_worker
     def analyze_target(self, url, session_id="default", timeout=None):
@@ -333,6 +440,30 @@ class BrowserManager:
             }
 
     @_on_worker
+    def find_contact_url(self, base_url, session_id="default"):
+        page = self._get_page_impl(session_id)
+        try:
+            hrefs = page.eval_on_selector_all(
+                "a",
+                """els => els.map(el => ({
+                    href: el.getAttribute('href') || '',
+                    text: (el.innerText || '').toLowerCase().trim(),
+                }))""",
+            )
+        except Exception:
+            return None
+
+        keywords = ["contact", "contact us", "request", "demo", "get started", "inquire", "inquiry", "book"]
+        for item in hrefs:
+            href = (item.get("href") or "").strip()
+            text = item.get("text") or ""
+            if not href or href.startswith("javascript"):
+                continue
+            if any(k in text for k in keywords) or any(k in href.lower() for k in ["contact", "request", "demo", "inquire", "book"]):
+                return urljoin(base_url, href)
+        return None
+
+    @_on_worker
     def screenshot(self, session_id="default", quality=70):
         page = self._get_page_impl(session_id)
         return page.screenshot(type="jpeg", quality=quality, full_page=False)
@@ -341,30 +472,12 @@ class BrowserManager:
         return self._last_session_id
 
     @_on_worker
-    def ai_fill_and_submit(self, mapping, session_id="default", keep_open=True):
+    def ai_fill_and_submit(self, mapping, session_id="default", keep_open=True, fields=None):
         page = self._get_page_impl(session_id)
-        
-        try:
-            fields = page.query_selector_all("input:not([type=hidden]),textarea,select")
-            field_info = []
-            for idx, el in enumerate(fields):
-                try:
-                    field_id = el.get_attribute("id") or ""
-                    field_name = el.get_attribute("name") or ""
-                    sel = el.evaluate("el => { const n = el.tagName.toLowerCase(); if(el.id) return n+'#'+el.id; if(el.name) return n+'[name=\"'+el.name+'\"]'; return n; }")
-                    field_info.append({
-                        "index": idx,
-                        "tag": el.evaluate("el => el.tagName.toLowerCase()"),
-                        "type": el.get_attribute("type") or "",
-                        "selector": sel
-                    })
-                except Exception:
-                    pass
-            fields = field_info
-        except Exception as e:
-            logger.error(f"Field evaluation failed: {e}")
+        if fields is None:
+            fields = self.detect_fields(session_id=session_id)
+        if fields is None:
             fields = []
-
         filled = 0
         total = len(fields)
 
@@ -385,21 +498,49 @@ class BrowserManager:
             tag = f.get("tag", "input")
             ftype = (f.get("type") or "").lower()
             action = (mapping[k].get("action") or "fill").lower()
+            frame_idx = mapping[k].get("frame_index") or f.get("frame_index")
+            target = page
+            if frame_idx is not None:
+                try:
+                    target = page.frames[int(frame_idx)]
+                except Exception:
+                    target = page
             
             try:
-                page.locator(sel).scroll_into_view_if_needed(timeout=2000)
-                
+                target.locator(sel).scroll_into_view_if_needed(timeout=2000)
+
                 if action == "check" or (ftype in {"checkbox", "radio"} and action != "fill"):
                     if _truthy(val) or action == "check":
-                        page.check(sel, timeout=2000)
+                        target.check(sel, timeout=2000)
                         filled += 1
                 elif tag == "select":
-                    page.select_option(sel, str(val), timeout=2000)
+                    target.select_option(sel, str(val), timeout=2000)
                     filled += 1
                 else:
-                    page.fill(sel, str(val), timeout=2000)
+                    target.fill(sel, str(val), timeout=2000)
                     filled += 1
             except Exception as e:
+                # Fallback: try by name attribute
+                name = f.get("name", "")
+                fid = f.get("id", "")
+                fallback_sel = None
+                if name:
+                    fallback_sel = f'[name="{name}"]'
+                elif fid:
+                    fallback_sel = f'#{fid}'
+                if fallback_sel and fallback_sel != sel:
+                    try:
+                        if action == "check":
+                            target.check(fallback_sel, timeout=2000)
+                        elif tag == "select":
+                            target.select_option(fallback_sel, str(val), timeout=2000)
+                        else:
+                            target.fill(fallback_sel, str(val), timeout=2000)
+                        filled += 1
+                        logger.debug(f"Filled via fallback {fallback_sel}")
+                        continue
+                    except Exception:
+                        pass
                 logger.debug(f"Failed to fill {sel}: {e}")
             
             time.sleep(0.15)
@@ -435,6 +576,31 @@ class BrowserManager:
             except Exception as e:
                 logger.debug(f"Submit attempt failed ({sel}): {e}")
                 continue
+
+        if not submit_clicked:
+            for frame in page.frames:
+                try:
+                    for sel in submit_selectors:
+                        locator = frame.locator(sel)
+                        if locator.count() > 0:
+                            locator.first.scroll_into_view_if_needed(timeout=2000)
+                            time.sleep(0.2)
+                            locator.first.click(timeout=3000)
+                            submit_clicked = True
+                            logger.info(f"Form submitted via frame: {sel}")
+                            break
+                    if submit_clicked:
+                        break
+                except Exception:
+                    continue
+
+        if not submit_clicked:
+            try:
+                page.evaluate("""() => { const f = document.querySelector('form'); if (f) f.submit(); }""")
+                submit_clicked = True
+                logger.info("Form submitted via: form.submit()")
+            except Exception:
+                pass
 
         status = "submitted" if submit_clicked else "submit_not_found"
         

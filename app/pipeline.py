@@ -3,6 +3,7 @@ High-volume pipeline — 1000-2000 submissions/day.
 """
 
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -194,8 +195,18 @@ def _process_single_target(target_id, app):
                 return
 
             page_html = result.get("html", "")
-            summary = ai_summarize_target(target.url, page_html[:4000], Config.COMPANY_DATA)
-            add_msg = ai_generate_additional_message(Config.COMPANY_DATA, summary)
+            disable_llm = os.getenv("DISABLE_LLM_FORMS", "false").lower() == "true"
+            if disable_llm:
+                summary = {"summary": "", "angle": "", "suggested_message": Config.COMPANY_DATA["message"]}
+                add_msg = Config.COMPANY_DATA["message"]
+            else:
+                try:
+                    summary = ai_summarize_target(target.url, page_html[:4000], Config.COMPANY_DATA)
+                    add_msg = ai_generate_additional_message(Config.COMPANY_DATA, summary)
+                except Exception as e:
+                    logger.warning("LLM failed for %s: %s, using defaults", target.url, e)
+                    summary = {"summary": "", "angle": "", "suggested_message": Config.COMPANY_DATA["message"]}
+                    add_msg = Config.COMPANY_DATA["message"]
 
             company_data = dict(Config.COMPANY_DATA)
             company_data["message"] = add_msg
@@ -265,4 +276,33 @@ def _persist_stats(app):
 
 
 def get_pipeline_status():
+    try:
+        from app import create_app
+        app = create_app()
+        with app.app_context():
+            rec = PipelineStat.query.order_by(PipelineStat.id.desc()).first()
+            if rec:
+                elapsed = 0
+                rate = 0
+                if rec.started_at:
+                    started = rec.started_at
+                    if started.tzinfo is None:
+                        started = started.replace(tzinfo=timezone.utc)
+                    elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+                    rate = (rec.processed / elapsed * 3600) if elapsed > 0 else 0
+                return {
+                    "started_at": rec.started_at.isoformat() if rec.started_at else None,
+                    "total_targets": rec.total_targets,
+                    "processed": rec.processed,
+                    "submitted": rec.submitted,
+                    "failed": rec.failed,
+                    "skipped": rec.skipped,
+                    "captchas_solved": rec.captchas_solved,
+                    "captchas_failed": rec.captchas_failed,
+                    "rate_per_hour": round(rate, 1),
+                    "elapsed_seconds": round(elapsed, 1),
+                }
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("get_pipeline_status DB read failed: %s", e)
     return pipeline_stats.to_dict()

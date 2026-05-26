@@ -34,6 +34,9 @@ class Submission(db.Model):
     fields_total = db.Column(db.Integer, default=0)
     screenshot_path = db.Column(db.String(500))
     error_message = db.Column(db.Text)
+    field_mapping = db.Column(db.Text)  # JSON: what was written in each field
+    session_log = db.Column(db.Text)     # Session activity log
+    final_url = db.Column(db.String(2048))  # URL after submission
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
 
     target = db.relationship("Target", backref="submissions")
@@ -50,8 +53,16 @@ class Lead(db.Model):
     status = db.Column(db.String(50), default="new", index=True)
     score = db.Column(db.Integer, default=0)
     notes = db.Column(db.Text)
+    # Exact form data sent to the target site
+    submitted_form_data = db.Column(db.Text)  # JSON: full field mapping
+    submitted_message = db.Column(db.Text)    # The actual message sent
+    submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=True)
+    target_id = db.Column(db.Integer, db.ForeignKey("target.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+    submission = db.relationship("Submission", backref="leads")
+    target = db.relationship("Target", backref="leads")
 
 
 class TaskLog(db.Model):
