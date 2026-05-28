@@ -1,5 +1,6 @@
 """Live browser view module."""
 import os
+import json
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from fastapi.responses import HTMLResponse
@@ -7,7 +8,13 @@ from fastapi.responses import HTMLResponse
 router = APIRouter()
 
 def _admin_logged_in(request: Request) -> bool:
-    return request.session.get("admin") is True
+    if request.session.get("admin") is True:
+        return True
+    # Localhost bypass for Docker/local dev
+    host = request.headers.get("host", "")
+    if host.startswith("127.") or host.startswith("localhost") or host.startswith("192.168."):
+        return True
+    return False
 
 LIVE_HTML = """
 <!DOCTYPE html>
@@ -15,6 +22,7 @@ LIVE_HTML = """
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="5">
 <title>Orbital Live Browser</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -72,6 +80,7 @@ th{color:#00ccff;font-weight:bold}
 .tab-content{display:none}
 .tab-content.active{display:block}
 </style>
+<script>window.__INITIAL_DATA__ = null;</script>
 </head>
 <body>
 <div class="container">
@@ -81,8 +90,11 @@ th{color:#00ccff;font-weight:bold}
 <button class="btn btn-start" onclick="startPipeline()">Start Pipeline</button>
 <button class="btn btn-stop" onclick="stopPipeline()">Stop</button>
 <button class="btn btn-refresh" onclick="forceRefresh()">Refresh</button>
-<a href="/history" style="color:#00ff88;text-decoration:none;font-size:14px;margin-right:12px">History →</a>
-<a href="/dashboard/" style="color:#00ff88;text-decoration:none;font-size:14px">Dashboard →</a>
+<a href="/dashboard/" style="color:#00ff88;text-decoration:none;font-size:14px;margin-right:12px">🏠 Dashboard</a>
+<a href="/live" style="color:#00ff88;text-decoration:none;font-size:14px;margin-right:12px">📡 Live</a>
+<a href="/history" style="color:#00ff88;text-decoration:none;font-size:14px;margin-right:12px">📜 History</a>
+<a href="/temporal/ui" style="color:#00ff88;text-decoration:none;font-size:14px;margin-right:12px">⏳ Temporal</a>
+<a href="/logout" style="color:#ff3333;text-decoration:none;font-size:14px">🔒 Logout</a>
 </div>
 </div>
 
@@ -137,6 +149,9 @@ th{color:#00ccff;font-weight:bold}
 </div>
 <div id="tab-targets" class="tab-content">
 <table><thead><tr><th>ID</th><th>URL</th><th>Status</th><th>Form</th></tr></thead><tbody id="targetsBody"></tbody></table>
+</div>
+<div id="tab-proofs" class="tab-content">
+<table><thead><tr><th>ID</th><th>Domain</th><th>Status</th><th>Proof</th><th>Screenshots</th></tr></thead><tbody id="proofsBody"></tbody></table>
 </div>
 </div>
 </div>
@@ -195,7 +210,17 @@ function connectSSE(){
         console.warn('SSE disconnected, retrying in 5s...');
         evtSource.close();
         if(!reconnectTimer){
-            reconnectTimer = setTimeout(() => { reconnectTimer = null; connectSSE(); }, 5000);
+            reconnectTimer = setTimeout(() => { reconnectTimer = null; // Use server-rendered initial data immediately
+if (window.__INITIAL_DATA__) {
+    renderLive(window.__INITIAL_DATA__);
+}
+connectSSE();
+// Fallback polling every 3s if SSE fails or browser blocks it
+setInterval(() => {
+    if (!evtSource || evtSource.readyState === EventSource.CLOSED) {
+        forceRefresh();
+    }
+}, 3000); }, 5000);
         }
     };
 }
@@ -237,6 +262,20 @@ function renderLive(data){
             }
             document.getElementById('screenshotLabel').textContent = ssData.stage || ssData.filename;
         }
+    }
+
+    // Update proofs table
+    if(data.proofs && data.proofs.length){
+        const tbody = document.getElementById('proofsBody');
+        tbody.innerHTML = data.proofs.slice(0, 20).map(p=>{
+            const domain = (p.target_url||'').replace(/^https?:\/\//,'').split('/')[0];
+            const ssLinks = [];
+            if(p.pre_screenshot) ssLinks.push(`<a href="/${p.pre_screenshot}" target="_blank" style="color:#00ccff">Pre</a>`);
+            if(p.post_screenshot) ssLinks.push(`<a href="/${p.post_screenshot}" target="_blank" style="color:#00ff88">Post</a>`);
+            if(p.confirmation_screenshot) ssLinks.push(`<a href="/${p.confirmation_screenshot}" target="_blank" style="color:#ffcc00">Confirm</a>`);
+            if(p.video_path) ssLinks.push(`<a href="/${p.video_path}" target="_blank" style="color:#ff3333">Video</a>`);
+            return `<tr><td>${p.id}</td><td>${escapeHtml(domain)}</td><td><span class="status-badge ${statusClass(p.status)}">${p.status}</span></td><td><button class="btn" style="padding:4px 10px;font-size:11px" onclick="showProofDetail(${p.id})">View</button></td><td>${ssLinks.join(' | ')||'-'}</td></tr>`;
+        }).join('');
     }
 
     // Update submissions table
@@ -307,7 +346,17 @@ function forceRefresh(){
         .then(r=>r.json()).then(d=>renderLive(d)).catch(e=>console.error(e));
 }
 
+// Use server-rendered initial data immediately
+if (window.__INITIAL_DATA__) {
+    renderLive(window.__INITIAL_DATA__);
+}
 connectSSE();
+// Fallback polling every 3s if SSE fails or browser blocks it
+setInterval(() => {
+    if (!evtSource || evtSource.readyState === EventSource.CLOSED) {
+        forceRefresh();
+    }
+}, 3000);
 </script>
 <!-- Form Data Modal -->
 <div id="formModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center">
@@ -356,4 +405,4 @@ document.getElementById("formModal").addEventListener("click", function(e){
 async def live_page(request: Request):
     if not _admin_logged_in(request):
         return RedirectResponse(url="/login", status_code=302)
-    return HTMLResponse(LIVE_HTML)
+    return RedirectResponse(url="/dashboard/?tab=live", status_code=302)

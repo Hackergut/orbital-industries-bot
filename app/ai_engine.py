@@ -1,6 +1,5 @@
-"""
-AI Engine — target-aware messaging and form mapping.
-Primary: Ollama. Fallback: OpenAI-compatible REST.
+"""AI Engine — target-aware messaging and form mapping.
+Primary: Ollama REST (no SDK). Fallback: OpenAI-compatible REST.
 Added: Redis caching for LLM calls to reduce latency and cost.
 """
 import json
@@ -20,10 +19,13 @@ def _get_ai_config():
     model = os.getenv("AI_MODEL", "llama3.1:8b")
     ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     ollama_api_key = os.getenv("OLLAMA_API_KEY", "")
-    ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "60"))
+    ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "15"))
+    # Fallback Ollama endpoint
+    ollama_host_2 = os.getenv("OLLAMA_HOST_2", "")
+    ollama_api_key_2 = os.getenv("OLLAMA_API_KEY_2", "")
     base_url = os.getenv("AI_BASE_URL", "")
     if provider == "ollama" and not base_url:
-        base_url = f"{ollama_host}/v1"
+        base_url = ollama_host  # raw host, e.g. http://localhost:11434
     return {
         "provider": provider,
         "api_key": api_key,
@@ -32,49 +34,56 @@ def _get_ai_config():
         "ollama_host": ollama_host,
         "ollama_api_key": ollama_api_key,
         "ollama_timeout": ollama_timeout,
+        "ollama_host_2": ollama_host_2,
+        "ollama_api_key_2": ollama_api_key_2,
     }
 
 
-def _call_ollama_sdk(system_prompt, user_prompt, temperature=0.3, max_tokens=1024):
-    try:
-        import ollama
-
-        config = _get_ai_config()
-        headers = None
-        if config.get("ollama_api_key"):
-            headers = {"Authorization": f"Bearer {config['ollama_api_key']}"}
-        client = ollama.Client(
-            host=config["ollama_host"],
-            headers=headers,
-            timeout=config.get("ollama_timeout", 60),
-        )
-        response = client.chat(
-            model=config["model"],
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            options={"temperature": temperature, "num_predict": max_tokens},
-        )
-        return response["message"]["content"]
-    except ImportError:
-        logger.warning("ollama-python not installed, falling back to REST")
-        return None
-    except Exception as e:
-        logger.error("Ollama SDK call failed: %s", e)
-        return None
-
-
-def _call_llm_rest(system_prompt, user_prompt, temperature=0.3, max_tokens=1024):
+def _call_ollama_rest(system_prompt, user_prompt, temperature=0.3, max_tokens=1024, host=None, api_key=None):
+    """Call Ollama via plain REST (no SDK). Supports fallback host/api_key."""
     config = _get_ai_config()
-    if config["provider"] == "ollama":
-        return None
-    if not config["api_key"] and config["provider"] != "ollama":
+    use_host = host or config['base_url']
+    url = f"{use_host}/api/chat"
+    headers = {"Content-Type": "application/json"}
+    auth_key = api_key or config.get("ollama_api_key")
+    if auth_key:
+        headers["Authorization"] = f"Bearer {auth_key}"
+
+    payload = {
+        "model": config["model"],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "stream": False,
+        "options": {
+            "temperature": temperature,
+            "num_predict": max_tokens,
+        },
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=config["ollama_timeout"])
+        r.raise_for_status()
+        data = r.json()
+        return data.get("message", {}).get("content", "")
+    except requests.exceptions.Timeout:
+        logger.warning("Ollama REST timed out (%ss) on %s", config["ollama_timeout"], use_host)
+    except Exception:
+        logger.warning("Ollama REST call failed on %s", use_host)
+    return None
+
+
+def _call_openai_rest(system_prompt, user_prompt, temperature=0.3, max_tokens=1024):
+    """Call any OpenAI-compatible endpoint (e.g. Groq, Together, OpenRouter)."""
+    config = _get_ai_config()
+    if not config["api_key"]:
         return None
 
-    headers = {"Content-Type": "application/json"}
-    if config["api_key"]:
-        headers["Authorization"] = f"Bearer {config['api_key']}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config['api_key']}",
+    }
 
     payload = {
         "model": config["model"],
@@ -86,28 +95,60 @@ def _call_llm_rest(system_prompt, user_prompt, temperature=0.3, max_tokens=1024)
         ],
     }
 
-    url = f"{config['base_url']}/chat/completions" if config["base_url"] else "https://api.openai.com/v1/chat/completions"
+    base = config["base_url"] or "https://api.openai.com/v1"
+    url = f"{base}/chat/completions"
 
     try:
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r = requests.post(url, headers=headers, json=payload, timeout=30)
         r.raise_for_status()
         data = r.json()
         return data["choices"][0]["message"]["content"]
     except Exception:
-        logger.exception("LLM REST call failed")
+        logger.exception("OpenAI-compatible REST call failed")
         return None
 
 
 def _call_llm(system_prompt, user_prompt, temperature=0.3, max_tokens=1024):
+    # Check cache first
+    cache_payload = {
+        "system_prompt_hash": hash(system_prompt) & 0xFFFFFFFF,
+        "user_prompt_hash": hash(user_prompt) & 0xFFFFFFFF,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "model": _get_ai_config()["model"],
+    }
+    cached = cache.get("llm_call", cache_payload)
+    if cached is not None:
+        logger.info("LLM cache hit")
+        return cached
+
     config = _get_ai_config()
+    result = None
     if config["provider"] == "ollama":
-        result = _call_ollama_sdk(system_prompt, user_prompt, temperature, max_tokens)
+        # Try primary Ollama endpoint
+        result = _call_ollama_rest(system_prompt, user_prompt, temperature, max_tokens)
         if result:
             return result
+        # Try fallback Ollama endpoint (host_2) if configured
+        if config.get("ollama_host_2"):
+            logger.info("Trying fallback Ollama endpoint: %s", config["ollama_host_2"])
+            result = _call_ollama_rest(
+                system_prompt, user_prompt, temperature, max_tokens,
+                host=config["ollama_host_2"],
+                api_key=config.get("ollama_api_key_2")
+            )
+            if result:
+                return result
+        # Fallback to OpenAI-compatible if configured
+        if config["api_key"] and config.get("base_url") and config["base_url"] != config["ollama_host"]:
+            result = _call_openai_rest(system_prompt, user_prompt, temperature, max_tokens)
+            if result:
+                return result
         return None
 
-    result = _call_llm_rest(system_prompt, user_prompt, temperature, max_tokens)
+    result = _call_openai_rest(system_prompt, user_prompt, temperature, max_tokens)
     if result:
+        cache.set("llm_call", cache_payload, result, ttl=3600)
         return result
     return None
 
@@ -122,7 +163,6 @@ def _extract_json(text):
 
 
 def ai_map_fields_smart(fields, company_data, target_summary):
-    # If LLM is disabled, go straight to rules
     if os.getenv("DISABLE_LLM_FORMS", "false").lower() == "true":
         mapping = _map_fields_rules(fields, company_data)
         for idx, f in enumerate(fields):
@@ -133,7 +173,6 @@ def ai_map_fields_smart(fields, company_data, target_summary):
                 mapping[k]["frame_index"] = f.get("frame_index")
         return mapping
 
-    # Cache key: hash of field descriptions + company data keys + target summary
     cache_payload = {
         "fields": [
             {
@@ -148,64 +187,36 @@ def ai_map_fields_smart(fields, company_data, target_summary):
             for f in fields
         ],
         "company_keys": sorted(company_data.keys()),
-        "summary": target_summary.get("summary", "") if target_summary else "",
+        "target_angle": (target_summary or {}).get("angle", "") if target_summary else "",
     }
-    cached = cache.get("field_map", cache_payload)
+    cached = cache.get("field_mapping", cache_payload)
     if cached:
         logger.info("Field mapping cache hit")
-        for idx, f in enumerate(fields):
-            k = str(idx)
-            if k in cached and f.get("frame_index") is not None:
-                cached[k]["frame_index"] = f.get("frame_index")
         return cached
 
-    field_descriptions = []
-    for i, f in enumerate(fields):
-        desc = (
-            f"Field {i}: tag={f.get('tag')}, name={f.get('name')}, id={f.get('id')}, "
-            f"placeholder={f.get('placeholder')}, label={f.get('label_text')}, type={f.get('type')}"
-        )
-        field_descriptions.append(desc)
+    system = """You are an intelligent form-filling assistant.
+Map each field index to the correct company data value.
+Return ONLY JSON in this exact format:
+{"0":{"value":"...","action":"fill"},"1":{"value":"...","action":"check"}}
+Use action: fill, check, select, or skip."""
 
-    system = """You are a form field mapper for Orbital Industries Limited. Given form fields,
-company data, and a target summary, map each field to the most accurate value.
-Return JSON: keys are field indices (as strings). Values are objects with:
-- "value": the string/boolean to fill
-- "action": one of "fill", "check", "select", "skip"
-Be concise."""
+    user = f"""Fields detected on the page:\n{json.dumps(fields, indent=2)}\n\nCompany data:\n{json.dumps(company_data, indent=2)}\n\nTarget context:\n{json.dumps(target_summary or {}, indent=2)}\n\nReturn ONLY JSON mapping."""
 
-    fields_str = "\n".join(field_descriptions)
-    user = f"""Fields:
-{fields_str}
-
-Company data:
-{json.dumps(company_data, indent=2)}
-
-Target summary:
-{json.dumps(target_summary, indent=2) if target_summary else "N/A"}
-
-Return ONLY JSON."""
-
-    response = _call_llm(system, user, temperature=0.3, max_tokens=1024)
+    response = _call_llm(system, user, temperature=0.2, max_tokens=1024)
     if response:
         try:
-            parsed = json.loads(_extract_json(response))
-            # Validate structure
-            for k, v in parsed.items():
-                if isinstance(v, dict) and "action" in v:
-                    pass
-                else:
-                    parsed[k] = {"value": str(v), "action": "fill"}
-            cache.set("field_map", cache_payload, parsed, ttl=7200)
+            mapping = json.loads(_extract_json(response))
             for idx, f in enumerate(fields):
                 k = str(idx)
-                if k in parsed and f.get("frame_index") is not None:
-                    parsed[k]["frame_index"] = f.get("frame_index")
-            return parsed
-        except Exception as e:
-            logger.warning("LLM field mapping parse failed: %s", e)
+                if f.get("required") and mapping.get(k, {}).get("action") == "skip":
+                    mapping[k] = _required_fallback_value(f, company_data)
+                if k in mapping and f.get("frame_index") is not None:
+                    mapping[k]["frame_index"] = f.get("frame_index")
+            cache.set("field_mapping", cache_payload, mapping, ttl=3600)
+            return mapping
+        except Exception:
+            logger.exception("Failed to parse AI field mapping")
 
-    # Fallback to rules
     mapping = _map_fields_rules(fields, company_data)
     for idx, f in enumerate(fields):
         k = str(idx)
@@ -217,23 +228,22 @@ Return ONLY JSON."""
 
 
 def _required_fallback_value(field, company_data):
-    tag = field.get("tag")
-    ftype = (field.get("type") or "").lower()
-    if ftype == "email":
+    raw = " ".join([field.get("name", ""), field.get("id", ""), field.get("placeholder", "")]).lower()
+    if "email" in raw:
         return {"value": company_data["email"], "action": "fill"}
-    if ftype in {"tel", "phone"}:
+    if "phone" in raw or "tel" in raw:
         return {"value": company_data["phone"], "action": "fill"}
-    if tag == "textarea":
+    if "company" in raw or "org" in raw:
+        return {"value": company_data["company"], "action": "fill"}
+    if "name" in raw:
+        return {"value": company_data["full_name"], "action": "fill"}
+    if "message" in raw or "comment" in raw or "note" in raw:
         return {"value": company_data["message"], "action": "fill"}
-    return {"value": company_data["full_name"], "action": "fill"}
+    return {"value": "N/A", "action": "fill"}
 
 
 def ai_summarize_target(target_url, page_snippet, company_data):
-    cache_payload = {
-        "url": target_url,
-        "snippet_hash": hash(page_snippet[:500]),
-        "company": company_data.get("company", ""),
-    }
+    cache_payload = {"url": target_url}
     cached = cache.get("target_summary", cache_payload)
     if cached:
         logger.info("Target summary cache hit for %s", target_url)
@@ -252,7 +262,7 @@ Return JSON: {"summary": "...", "angle": "...", "suggested_message": "..."}."""
             cache.set("target_summary", cache_payload, result, ttl=3600)
             return result
         except Exception:
-            pass
+            logger.exception("Failed to parse target summary JSON")
 
     return {
         "summary": "Target summary unavailable",

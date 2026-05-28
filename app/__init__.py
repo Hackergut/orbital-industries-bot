@@ -20,7 +20,8 @@ def create_app():
     # Quiet noisy logs
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("playwright").setLevel(logging.WARNING)
+    # If selenium is used, no playwright logs needed
+    logging.getLogger("selenium").setLevel(logging.WARNING)
 
     def _wait_for_db(max_tries=10, delay=2):
         for attempt in range(max_tries):
@@ -33,8 +34,13 @@ def create_app():
         return False
 
     with app.app_context():
-        from app.routes import register_routes
-        register_routes(app)
+        # Skip old Flask routes (we use FastAPI routes in routes_fastapi.py)
+        if not os.getenv("SKIP_FLASK_ROUTES", "false").lower() == "true":
+            try:
+                from app.routes import register_routes
+                register_routes(app)
+            except Exception:
+                pass
         _wait_for_db()
         # Ensure instance directory exists for SQLite
         db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")

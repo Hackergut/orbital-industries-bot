@@ -1,4 +1,19 @@
-version: "3.9"
+# =============================================================================
+# Orbital Tech 2 - Docker Compose (Local Mac Development)
+# =============================================================================
+# REQUIREMENTS:
+#   1. Start Temporal dev server FIRST on the host (required):
+#        temporal server start-dev
+#      (UI will be at http://localhost:8233)
+#
+#   2. Then run:
+#        docker compose up -d --build
+#
+# NOTES:
+#   - All services use host.docker.internal to reach Temporal + Ollama on Mac host.
+#   - Legacy 'worker' (threaded pipeline) is DISABLED by default.
+#   - SQLite is shared across containers — avoid heavy concurrent writes.
+# =============================================================================
 
 services:
   redis:
@@ -6,67 +21,167 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=sqlite:////app/instance/orbital.db
-      - FIRECRAWL_API_KEY=fc-2c1b2acba3dc4c3f80a2dd91c679a471
       - UVICORN_WORKERS=1
-      - BROWSER_POOL_SIZE=1
+      - BROWSER_POOL_SIZE=2
       - BROWSER_HEADLESS=true
-      - DISABLE_LLM_FORMS=false
+      - DISABLE_LLM_FORMS=true
       - AI_PROVIDER=ollama
-      - AI_MODEL=llama3:latest
+      - AI_MODEL=llama3.1:8b
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_HOST_2=${OLLAMA_HOST_2:-}
+      - OLLAMA_API_KEY_2=${OLLAMA_API_KEY_2:-}
+      - OLLAMA_TIMEOUT=15
+      - CHROME_BIN=/usr/bin/chromium
+      - CHROMEDRIVER_PATH=/usr/bin/chromedriver
+      - PYTHONUNBUFFERED=1
+      - SELENIUM_POOL_SIZE=2
+      - SELENIUM_RETRY_ATTEMPTS=3
+      - TEMPORAL_HOST=host.docker.internal:7233
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     volumes:
       - ./static:/app/static
       - ./logs:/app/logs
       - ./browser_data:/app/browser_data
-      - db_data:/app/instance
+      - ./instance:/app/instance
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/temporal/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     command: ["python", "run.py"]
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  # ---------------------------------------------------------------------------
+  # LEGACY THREADED WORKER (DISABLED)
+  # This is the old non-Temporal pipeline runner. It is kept for reference only.
+  # Temporal worker below is the current/recommended path.
+  # To re-enable: uncomment the block below.
+  # ---------------------------------------------------------------------------
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - DATABASE_URL=sqlite:////app/instance/orbital.db
+  #     - FIRECRAWL_API_KEY=fc-2c1b2acba3dc4c3f80a2dd91c679a471
+  #     - BROWSER_POOL_SIZE=2
+  #     - BROWSER_HEADLESS=true
+  #     - PIPELINE_MAX_CONCURRENT=2
+  #     - PIPELINE_BATCH_SIZE=10
+  #     - PIPELINE_TARGET_DAILY=500
+  #     - DISABLE_LLM_FORMS=true
+  #     - AI_PROVIDER=ollama
+  #     - AI_MODEL=llama3.1:8b
+  #     - OLLAMA_HOST=http://host.docker.internal:11434
+  #     - OLLAMA_TIMEOUT=15
+  #     - CHROME_BIN=/usr/bin/chromium
+  #     - CHROMEDRIVER_PATH=/usr/bin/chromedriver
+  #     - PIPELINE_INTERVAL=60
+  #     - KEEP_OPEN_SECONDS=12
+  #     - PYTHONUNBUFFERED=1
+  #     - SELENIUM_POOL_SIZE=2
+  #     - SELENIUM_RETRY_ATTEMPTS=3
+  #     - TEMPORAL_HOST=host.docker.internal:7233
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     web:
+  #       condition: service_started
+  #   volumes:
+  #     - ./static:/app/static
+  #     - ./logs:/app/logs
+  #     - ./browser_data:/app/browser_data
+  #     - ./instance:/app/instance
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   command: ["./worker_start.sh"]
+
+# Temporal worker disabled — no Temporal server available
+  #   temporal-worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   environment:
+  #     - DATABASE_URL=sqlite:////app/instance/orbital.db
+  #     - BROWSER_POOL_SIZE=2
+  #     - BROWSER_HEADLESS=true
+  #     - DISABLE_LLM_FORMS=true
+  #     - AI_PROVIDER=ollama
+  #     - AI_MODEL=llama3.1:8b
+  #     - OLLAMA_HOST=http://host.docker.internal:11434
+  #     - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+  #     - OLLAMA_HOST_2=${OLLAMA_HOST_2:-}
+  #     - OLLAMA_API_KEY_2=${OLLAMA_API_KEY_2:-}
+  #     - OLLAMA_TIMEOUT=15
+  #     - CHROME_BIN=/usr/bin/chromium
+  #     - CHROMEDRIVER_PATH=/usr/bin/chromedriver
+  #     - PYTHONUNBUFFERED=1
+  #     - SELENIUM_POOL_SIZE=2
+  #     - SELENIUM_RETRY_ATTEMPTS=3
+  #     - TEMPORAL_HOST=host.docker.internal:7233
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./static:/app/static
+  #     - ./logs:/app/logs
+  #     - ./browser_data:/app/browser_data
+  #     - ./instance:/app/instance
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "print('healthy')"]
+  #     interval: 60s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+  #   command: ["python", "run_temporal_worker.py"]
+
+
+  # ── Crawl4AI self-hosted scraper ───────────────────────────────────────────
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    restart: unless-stopped
+    ports:
+      - "11235:11235"
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite:////app/instance/orbital.db
-      - FIRECRAWL_API_KEY=fc-2c1b2acba3dc4c3f80a2dd91c679a471
-      - BROWSER_POOL_SIZE=3
-      - BROWSER_HEADLESS=false
-      - DISPLAY=:99
-      - PIPELINE_MAX_CONCURRENT=3
-      - PIPELINE_BATCH_SIZE=15
-      - PIPELINE_TARGET_DAILY=500
-      - DISABLE_LLM_FORMS=false
-      - AI_PROVIDER=ollama
-      - AI_MODEL=llama3:latest
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - PIPELINE_INTERVAL=60
-      - KEEP_OPEN_SECONDS=20
-    depends_on:
-      - redis
-      - web
+      - CRAWL4AI_API_KEY=orbital-local-key
+      - MAX_CONCURRENT_CRAWLS=3
+      - CRAWL_TIMEOUT=45
     volumes:
-      - ./static:/app/static
-      - ./logs:/app/logs
-      - ./browser_data:/app/browser_data
-      - db_data:/app/instance
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command: ["./worker_start.sh"]
+      - crawl4ai_data:/app/crawl4ai/.crawl4ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   redis_data:
-  db_data:
+  crawl4ai_data:
+

@@ -20,7 +20,8 @@ from app.ai_engine import (
 from app.browser import browser_mgr
 from app.config import Config
 from app.models import Lead, PipelineStat, Submission, Target
-from app.search import search_firecrawl
+from app.search import search_primary
+from app.constants import EXCLUDED_MEGA_BRANDS, AUTO_QUERIES
 from app.captcha import solve_captcha_if_present
 
 logger = logging.getLogger(__name__)
@@ -95,16 +96,15 @@ class PipelineStats:
 pipeline_stats = PipelineStats()
 
 
-AUTO_QUERIES = [
-    "hedge fund contact form",
-    "family office contact us",
-    "crypto fund manager contact",
-    "venture capital firm contact form",
-    "fund administrator request demo",
-    "institutional digital asset platform contact",
-    "asset management firm contact us",
-    "prime brokerage crypto contact",
-]
+
+def _is_mega_brand(url: str, title: str = "") -> bool:
+    combined = (url + " " + title).lower()
+    for brand in EXCLUDED_MEGA_BRANDS:
+        if brand in combined:
+            return True
+    return False
+
+
 
 
 def run_high_volume_pipeline(batch_size=None, max_concurrent=None):
@@ -149,13 +149,20 @@ def run_high_volume_pipeline(batch_size=None, max_concurrent=None):
 def _discover_targets(app, limit=200):
     with app.app_context():
         added = 0
+        skipped_big = 0
         for q in AUTO_QUERIES:
-            results = search_firecrawl(q, limit=10)
+            results = search_primary(q, limit=10)
             for r in results:
-                exists = Target.query.filter_by(url=r["url"]).first()
+                url = r["url"]
+                title = r.get("title", "")
+                if _is_mega_brand(url, title):
+                    skipped_big += 1
+                    logger.info("Skipped mega-brand target: %s (%s)", url, title)
+                    continue
+                exists = Target.query.filter_by(url=url).first()
                 if exists:
                     continue
-                t = Target(url=r["url"], title=r.get("title", ""), source_query=q)
+                t = Target(url=url, title=title, source_query=q)
                 db.session.add(t)
                 added += 1
                 if added >= limit:
@@ -163,7 +170,7 @@ def _discover_targets(app, limit=200):
             if added >= limit:
                 break
         db.session.commit()
-        logger.info("Discovered %d new targets", added)
+        logger.info("Discovered %d new targets (skipped %d mega-brands)", added, skipped_big)
 
 
 def _domain_key(url):

@@ -1,0 +1,41 @@
+"""Shared constants for Orbital pipeline to eliminate duplication."""
+
+EXCLUDED_MEGA_BRANDS = {
+    "blackrock", "vanguard", "fidelity", "state street", "goldman sachs",
+    "jp morgan", "morgan stanley", "bridgewater", "citadel", "two sigma",
+    "renaissance", "point72", "millennium", "baupost", "elliott",
+    "soros", "d.e. shaw", "marshall wace", "man group", "tci", "third point",
+    "brevan howard", "paulson", "pershing square", "icahn", "ackman",
+    "bain capital", "kkr", "carlyle", "blackstone", "apollo", "warburg",
+    "tpg", "softbank", "sequoia", "benchmark", "accel", "andreessen",
+    "bessemer", "index ventures", "insight partners", "lightspeed",
+    "coatue", "tiger global", "d1", "viking", "glenview", "lone pine",
+    "valeant", "fairfax", "loeb", "greenlight", "tudor", "moore", "aqr",
+    "canyon", "oaktree", "oak hill", "silver lake", "thoma bravo",
+    "veritas", "general atlantic", "berkshire hathaway", "berkshire",
+    "nextera", "invesco", "pimco", "franklin templeton", "capital group",
+    "prudential", "metlife", "allianz", "axa", "ubs", "credit suisse",
+    "deutsche bank", "barclays", "hsbc", "bnpp", "societe generale",
+    "nomura", "mizuho", "daiwa", "macquarie", "lazard", "evercore",
+    "perella", "jefferies", "rbc", "td", "scotiabank", "bmo",
+    "wells fargo", "bank of america", "citi", "citigroup",
+}
+
+AUTO_QUERIES = [
+    "hedge fund contact form",
+    "family office contact us",
+    "crypto fund manager contact",
+    "venture capital firm contact form",
+    "fund administrator request demo",
+    "institutional digital asset platform contact",
+    "asset management firm contact us",
+    "prime brokerage crypto contact",
+    "boutique hedge fund contact",
+    "emerging manager hedge fund contact form",
+    "mid-size family office contact",
+    "emerging venture capital firm contact",
+    "seed stage crypto fund contact",
+    "boutique investment manager contact",
+    "alternative investment boutique contact",
+    "boutique digital asset manager contact",
+]

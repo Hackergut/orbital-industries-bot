@@ -10,8 +10,10 @@ jinja2
 flask
 flask-sqlalchemy
 requests
+selenium
 playwright
 ollama
 APScheduler
 psycopg2-binary
 gunicorn
+temporalio[prometheus]

@@ -61,6 +61,12 @@ class Lead(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
+    # DocSend tracking
+    doc_send_sent_at = db.Column(db.DateTime, nullable=True)
+    doc_send_opened_at = db.Column(db.DateTime, nullable=True)
+    doc_send_downloaded_at = db.Column(db.DateTime, nullable=True)
+    onboarding_status = db.Column(db.String(50), default="doc_send_pending", index=True)
+
     submission = db.relationship("Submission", backref="leads")
     target = db.relationship("Target", backref="leads")
 
@@ -92,3 +98,41 @@ class PipelineStat(db.Model):
     captchas_failed = db.Column(db.Integer, default=0)
     rate_per_hour = db.Column(db.Float, default=0)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+class FormProof(db.Model):
+    __tablename__ = 'form_proof'
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)
+    target_id = db.Column(db.Integer, db.ForeignKey('target.id'), nullable=True)
+    target_url = db.Column(db.String(2048))
+
+    # Screenshots per ogni fase
+    pre_screenshot = db.Column(db.String(500))        # Prima di compilare
+    filling_screenshot = db.Column(db.String(500))    # Durante compilazione
+    post_screenshot = db.Column(db.String(500))         # Dopo submit
+    confirmation_screenshot = db.Column(db.String(500))
+    video_path = db.Column(db.String(500))  # Pagina conferma/error
+
+    # Dati completi
+    detected_fields = db.Column(db.Text)      # JSON: campi rilevati dalla pagina
+    ai_mapping = db.Column(db.Text)           # JSON: mapping AI -> campi
+    actual_values = db.Column(db.Text)        # JSON: valori realmente scritti
+    submitted_message = db.Column(db.Text)    # Messaggio inviato
+    final_url = db.Column(db.String(2048))    # URL finale
+    status = db.Column(db.String(50), default='pending')  # pending, submitted, error, timeout
+
+    # Log e metadati
+    browser_console_log = db.Column(db.Text)
+    session_log = db.Column(db.Text)
+    error_message = db.Column(db.Text)
+
+    # Timestamp
+    pre_at = db.Column(db.DateTime)
+    filling_at = db.Column(db.DateTime)
+    post_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+
+    submission = db.relationship('Submission', backref='form_proofs')
+    target = db.relationship('Target', backref='form_proofs')
+

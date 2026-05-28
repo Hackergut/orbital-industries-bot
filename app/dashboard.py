@@ -168,7 +168,7 @@ def index():
             
             // Update every 1 second
             updateDashboard();
-            setInterval(updateDashboard, 1000);
+            setInterval(updateDashboard, 3000);
         </script>
     </body>
     </html>

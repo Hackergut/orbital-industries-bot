@@ -8,24 +8,25 @@ from datetime import datetime, timezone
 
 from app import create_app, db
 from app.ai_engine import ai_generate_additional_message, ai_map_fields_smart, ai_summarize_target
-from app.browser_async import get_pool
+from app.browser_selenium import get_pool
 from app.config import Config
 from app.models import Lead, PipelineStat, Submission, Target
-from app.pipeline import pipeline_stats
-from app.search import search_firecrawl
+from app.pipeline_stats import pipeline_stats
+from app.form_proof import build_proof_for_target
+from app.search import search_primary
+from app.constants import EXCLUDED_MEGA_BRANDS, AUTO_QUERIES
 
 logger = logging.getLogger(__name__)
 
-AUTO_QUERIES = [
-    "hedge fund contact form",
-    "family office contact us",
-    "crypto fund manager contact",
-    "venture capital firm contact form",
-    "fund administrator request demo",
-    "institutional digital asset platform contact",
-    "asset management firm contact us",
-    "prime brokerage crypto contact",
-]
+
+def _is_mega_brand(url: str, title: str = "") -> bool:
+    combined = (url + " " + title).lower()
+    for brand in EXCLUDED_MEGA_BRANDS:
+        if brand in combined:
+            return True
+    return False
+
+
 
 # Shared app instance — avoid re-creating Flask app on every batch
 _pipeline_app = None
@@ -38,37 +39,55 @@ def _get_app():
 
 
 async def _discover_targets(limit: int = 200):
-    """Discover new targets via Firecrawl search."""
+    """Discover new targets via parallel search queries."""
     app = _get_app()
     added = 0
+    seen_urls = set()
     
-    def _sync_discover():
+    def _sync_search_one(q: str):
+        """Run a single search query and return results."""
+        try:
+            return search_primary(q, limit=15)
+        except Exception as e:
+            logger.warning("Discovery query '%s' failed: %s", q, e)
+            return []
+    
+    def _sync_persist(results_list):
         nonlocal added
         with app.app_context():
-            for q in AUTO_QUERIES:
-                try:
-                    results = search_firecrawl(q, limit=10)
-                    for r in results:
-                        exists = Target.query.filter_by(url=r["url"]).first()
-                        if exists:
-                            continue
-                        t = Target(url=r["url"], title=r.get("title", ""), source_query=q)
-                        db.session.add(t)
-                        added += 1
-                        if added >= limit:
-                            break
-                    db.session.commit()
+            for results in results_list:
+                for r in results:
                     if added >= limit:
                         break
-                except Exception as e:
-                    logger.warning("Discovery query '%s' failed: %s", q, e)
+                    url = r["url"]
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    title = r.get("title", "")
+                    if _is_mega_brand(url, title):
+                        continue
+                    exists = Target.query.filter_by(url=url).first()
+                    if exists:
+                        continue
+                    t = Target(url=url, title=title, source_query=r.get("source_query", ""))
+                    db.session.add(t)
+                    added += 1
+                if added >= limit:
+                    break
+            db.session.commit()
         return added
     
     loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        added = await loop.run_in_executor(pool, _sync_discover)
     
-    logger.info("Discovered %d new targets", added)
+    # Phase 1: Run all search queries in parallel (max 4 concurrent)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(_sync_search_one, q) for q in AUTO_QUERIES]
+        all_results = [f.result() for f in concurrent.futures.as_completed(futures, timeout=60)]
+    
+    # Phase 2: Persist all results in one transaction
+    added = await loop.run_in_executor(None, _sync_persist, all_results)
+    
+    logger.info("Discovered %d new targets via parallel search", added)
     return added
 
 
@@ -77,8 +96,6 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
     app = _get_app()
     pool = await get_pool()
     session_id = f"target_{target_id}_a{attempt}"
-    ctx = None
-    page = None
     session_log_lines = []
 
     def _log(msg: str):
@@ -93,43 +110,44 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
 
         try:
             # Checkout one context/page for this target
-            ctx, page = await pool._checkout(session_id)
+            sess = await pool._checkout(session_id)
             _log(f"CHECKOUT {target.url}")
 
             # Navigate with longer timeout
             _log(f"NAVIGATING {target.url}")
             await asyncio.wait_for(
-                page.goto(target.url, wait_until="domcontentloaded", timeout=35000),
+                pool.navigate(target.url, session_id),
                 timeout=40,
             )
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.1)
 
             # Take live screenshot immediately after DOM ready
             try:
                 os.makedirs(Config.SCREENSHOT_DIR, exist_ok=True)
-                await page.screenshot(
+                await pool.screenshot(
                     path=os.path.join(Config.SCREENSHOT_DIR, "live_current.png"),
+                    session_id=session_id,
                     full_page=False,
                 )
             except Exception:
                 pass
 
             # Analyze page
-            page_title = await page.title()
-            html = await page.content()
-            has_form = await page.evaluate(
-                """() => document.querySelectorAll('input, textarea, select').length > 2"""
+            page_title = await pool.title(session_id)
+            html = await pool.content(session_id)
+            has_form = await pool.evaluate(
+                "return document.querySelectorAll('input, textarea, select').length > 2", session_id
             )
-            emails = await page.evaluate(r"""() => {
+            emails = await pool.evaluate(r"""return (() => {
                 const text = document.body.innerText;
                 const matches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
                 return Array.from(new Set(matches || []));
-            }""")
+            })();""", session_id)
             has_captcha = bool(
-                await page.query_selector(".g-recaptcha")
-                or await page.query_selector(".h-captcha")
-                or await page.query_selector("iframe[src*='recaptcha']")
-                or await page.query_selector("iframe[src*='hcaptcha']")
+                await pool.query_selector(".g-recaptcha", session_id)
+                or await pool.query_selector(".h-captcha", session_id)
+                or await pool.query_selector("iframe[src*='recaptcha']", session_id)
+                or await pool.query_selector("iframe[src*='hcaptcha']", session_id)
             )
 
             target.has_form = bool(has_form)
@@ -193,6 +211,68 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
                 mapping, session_id=session_id, fields=fields
             )
 
+            # ── Video Recording ────────────────────────────────
+            video_path = ""
+            try:
+                from app.form_proof import VideoRecorder
+                recorder = VideoRecorder()
+                video_path = recorder.start(
+                    f"static/videos/proof_{target_id}_submit.mp4",
+                    display=":99",
+                    duration=25,
+                )
+                _log(f'VIDEO_STARTED {video_path}')
+            except Exception as vr_err:
+                logger.warning('Video recording start failed: %s', vr_err)
+            # ── /Video Recording ─────────────────────────────
+
+            submit_result = await pool.ai_fill_and_submit(
+                mapping, session_id=session_id, fields=fields
+            )
+
+            # Stop video recording
+            try:
+                if video_path:
+                    recorder.stop()
+                    _log(f'VIDEO_STOPPED {video_path}')
+            except Exception as vr_err:
+                logger.warning('Video recording stop failed: %s', vr_err)
+
+            # ── Form Proof Capture ─────────────────────────────
+            try:
+                from app.form_proof import FormProofBuilder
+                builder = FormProofBuilder(target_id, target.url, session_id=session_id)
+                # Capture pre-fill screenshot (form state before fill)
+                pre_ss = await builder.capture_pre(pool)
+                _log(f'PROOF_PRE_SS {pre_ss}')
+                # Capture post-submit screenshot
+                post_ss = submit_result.get('screenshot', '')
+                if not post_ss:
+                    post_ss = await builder.capture_post(pool)
+                # Capture confirmation after page settles
+                confirmation_ss = await builder.capture_confirmation(pool, wait_seconds=4)
+                # Extract what was actually written
+                actual_values = await builder.extract_actual_values(pool)
+                final_url = await builder.extract_final_url(pool)
+                # Save full proof record
+                proof_id = builder.save(
+                    pre_screenshot=pre_ss,
+                    post_screenshot=post_ss,
+                    confirmation_screenshot=confirmation_ss,
+                    video_path=video_path,
+                    detected_fields=fields,
+                    ai_mapping=mapping,
+                    actual_values=actual_values,
+                    submitted_message=company_data.get('message', ''),
+                    final_url=final_url,
+                    status=submit_result.get('status', 'unknown'),
+                    session_log='\n'.join(session_log_lines),
+                )
+                _log(f'PROOF_SAVED id={proof_id}')
+            except Exception as proof_err:
+                logger.warning('FormProof capture failed for %s: %s', target.url, proof_err)
+            # ── /Form Proof Capture ────────────────────────────
+
             # Save submission with full details
             sub = Submission(
                 target_id=target.id,
@@ -202,7 +282,7 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
                 screenshot_path=submit_result["screenshot"],
                 field_mapping=json.dumps(mapping),
                 session_log="\n".join(session_log_lines),
-                final_url=submit_result.get("final_url", page.url),
+                final_url=submit_result.get("final_url", await pool.evaluate("return window.location.href", session_id=session_id)),
             )
             db.session.add(sub)
             db.session.commit()
@@ -255,8 +335,9 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
 
             # Screenshot after submit
             try:
-                await page.screenshot(
+                await pool.screenshot(
                     path=os.path.join(Config.SCREENSHOT_DIR, "live_submitted.png"),
+                    session_id=session_id,
                     full_page=False,
                 )
             except Exception:
@@ -269,7 +350,7 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
                 for _ in range(keep_open_seconds // 3):
                     await asyncio.sleep(3)
                     try:
-                        await page.screenshot(
+                        await pool.screenshot(
                             path=os.path.join(Config.SCREENSHOT_DIR, "live_current.png"),
                             full_page=False,
                         )
@@ -286,18 +367,29 @@ async def _process_single_target_async(target_id: int, attempt: int = 1):
             # Retry once for transient errors
             if attempt < 2 and "timeout" not in str(e).lower():
                 logger.info("Retrying target %s (attempt %d)", target.url, attempt + 1)
-                await asyncio.sleep(2)
+                await asyncio.sleep(0.5)
                 await _process_single_target_async(target_id, attempt=attempt + 1)
         finally:
-            if ctx and page:
-                try:
-                    await pool._release(session_id, ctx, page)
-                    _log("RELEASED")
-                except Exception as re:
-                    logger.debug("Release error: %s", re)
+            try:
+                await pool._release(session_id)
+                _log("RELEASED")
+            except Exception as re:
+                logger.debug("Release error: %s", re)
+
+
+# Global flag to prevent multiple pipeline runs
+_pipeline_running = False
+_last_discovery_time = None
 
 
 async def run_pipeline_async(batch_size: int = None, max_concurrent: int = None):
+    """Infinite pipeline loop — runs continuously until container stops."""
+    global _pipeline_running
+    if _pipeline_running:
+        logger.info("Pipeline already running, skipping duplicate start")
+        return
+    
+    _pipeline_running = True
     batch_size = batch_size or Config.PIPELINE_BATCH_SIZE
     max_concurrent = max_concurrent or Config.PIPELINE_MAX_CONCURRENT
 
@@ -308,44 +400,11 @@ async def run_pipeline_async(batch_size: int = None, max_concurrent: int = None)
         with app.app_context():
             return Target.query.filter_by(status="pending").order_by(Target.id).all()
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        pending = await loop.run_in_executor(pool, _get_pending)
+    def _count_pending():
+        with app.app_context():
+            return Target.query.filter_by(status="pending").count()
     
-    if not pending:
-        # Try discovery if no pending targets
-        await _discover_targets(limit=Config.PIPELINE_TARGET_DAILY)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            pending = await loop.run_in_executor(pool, _get_pending)
-    
-    if not pending:
-        logger.info("No targets to process")
-        return
-
-    pipeline_stats.start(len(pending))
-    semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def _run(target_id):
-        async with semaphore:
-            try:
-                await asyncio.wait_for(
-                    _process_single_target_async(target_id),
-                    timeout=180,
-                )
-            except asyncio.TimeoutError:
-                logger.warning("Target %s timed out after 180s", target_id)
-                pipeline_stats.record_fail()
-                with app.app_context():
-                    t = db.session.get(Target, target_id)
-                    if t:
-                        t.status = "timeout"
-                        db.session.commit()
-
-    tasks = [asyncio.create_task(_run(t.id)) for t in pending[:batch_size]]
-    await asyncio.gather(*tasks, return_exceptions=True)
-
-    stats = pipeline_stats.to_dict()
-    
-    def _persist_stats():
+    def _persist_stats(stats):
         with app.app_context():
             rec = PipelineStat.query.order_by(PipelineStat.id.desc()).first()
             if not rec:
@@ -362,6 +421,70 @@ async def run_pipeline_async(batch_size: int = None, max_concurrent: int = None)
             rec.rate_per_hour = stats["rate_per_hour"]
             db.session.commit()
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        await loop.run_in_executor(pool, _persist_stats)
-    logger.info("Pipeline batch completed: %s", stats)
+    try:
+        while True:
+            # ── Phase 1: Check / discover targets ──────────────────────────
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                pending = await loop.run_in_executor(pool, _get_pending)
+            
+            if not pending:
+                import time
+                global _last_discovery_time
+                now = time.time()
+                if _last_discovery_time and (now - _last_discovery_time) < 300:
+                    logger.info("No pending targets — discovery cooldown active (%.0fs left)", 300 - (now - _last_discovery_time))
+                    await asyncio.sleep(30)
+                    continue
+                _last_discovery_time = now
+                logger.info("No pending targets — running discovery...")
+                try:
+                    await asyncio.wait_for(_discover_targets(limit=Config.PIPELINE_TARGET_DAILY), timeout=60)
+                except asyncio.TimeoutError:
+                    logger.warning('Target discovery timed out after 90s')
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pending = await loop.run_in_executor(pool, _get_pending)
+                
+                if not pending:
+                    logger.info("Still no targets after discovery — waiting 30s before retry")
+                    await asyncio.sleep(30)
+                    continue
+            
+            # ── Phase 2: Process batch ─────────────────────────────────────
+            pipeline_stats.start(len(pending))
+            semaphore = asyncio.Semaphore(max_concurrent)
+            
+            async def _run(target_id):
+                async with semaphore:
+                    try:
+                        await asyncio.wait_for(
+                            _process_single_target_async(target_id),
+                            timeout=90,
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning("Target %s timed out after 90s", target_id)
+                        pipeline_stats.record_fail()
+                        with app.app_context():
+                            t = db.session.get(Target, target_id)
+                            if t:
+                                t.status = "timeout"
+                                db.session.commit()
+            
+            tasks = [asyncio.create_task(_run(t.id)) for t in pending[:batch_size]]
+            await asyncio.gather(*tasks, return_exceptions=True)
+            
+            stats = pipeline_stats.to_dict()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                await loop.run_in_executor(pool, _persist_stats, stats)
+            logger.info("Pipeline batch completed: %s", stats)
+            
+            # ── Phase 3: Brief pause before next cycle ─────────────────────
+            await asyncio.sleep(5)
+    
+    except asyncio.CancelledError:
+        logger.info("Pipeline cancelled (container shutting down)")
+    except Exception as e:
+        logger.exception("Pipeline crashed: %s", e)
+    finally:
+        _pipeline_running = False
+_last_discovery_time = None

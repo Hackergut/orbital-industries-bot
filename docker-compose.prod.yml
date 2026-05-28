@@ -1,0 +1,93 @@
+# Orbital Industries — Production Docker Compose
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:////app/instance/orbital.db
+      - UVICORN_WORKERS=1
+      - BROWSER_POOL_SIZE=2
+      - BROWSER_HEADLESS=true
+      - DISABLE_LLM_FORMS=true
+      - AI_PROVIDER=ollama
+      - AI_MODEL=llama3.1:8b
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_TIMEOUT=15
+      - CHROME_BIN=/usr/bin/chromium
+      - CHROMEDRIVER_PATH=/usr/bin/chromedriver
+      - PYTHONUNBUFFERED=1
+      - SELENIUM_POOL_SIZE=2
+      - SELENIUM_RETRY_ATTEMPTS=3
+      - TEMPORAL_HOST=host.docker.internal:7233
+      - ADMIN_BYPASS_LOCAL=false
+      - SECRET_KEY=orbital-industries-2026-prod
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=change-me-now
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./static:/app/static
+      - ./logs:/app/logs
+      - ./browser_data:/app/browser_data
+      - ./instance:/app/instance
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    expose:
+      - "5000"
+    command: ["python", "run.py"]
+
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11235:11235"
+    environment:
+      - CRAWL4AI_API_KEY=orbital-local-key
+      - MAX_CONCURRENT_CRAWLS=3
+      - CRAWL_TIMEOUT=45
+    volumes:
+      - crawl4ai_data:/app/crawl4ai/.crawl4ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./static:/usr/share/nginx/html/static:ro
+    command: ["nginx", "-g", "daemon off;"]
+
+volumes:
+  redis_data:
+  crawl4ai_data:

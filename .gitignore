@@ -35,3 +35,23 @@ static/screenshots/*.png
 
 # Docker
 *.dockerignore
+
+# Next.js build output
+dashboard-ui/.next/
+dashboard-ui/out/
+dashboard-ui/package-lock.json
+
+# Misc build artifacts
+paperclip/
+static/videos/
+
+# Temporal artifacts (legacy)
+temporal_client.py
+temporal_config.yml
+temporal_worker.py
+pipeline_workflows.py
+run_temporal_worker.py
+worker_start_temporal.sh
+TEMPORAL_SETUP.md
+app/search.py.bak
+config_safe.py

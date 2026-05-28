@@ -7,7 +7,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.browser_async import get_pool, shutdown_pool
+from app.browser_selenium import get_pool, shutdown_pool
 from app.pipeline_async import run_pipeline_async
 
 

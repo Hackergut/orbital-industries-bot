@@ -10,11 +10,11 @@ from celery.signals import worker_process_init, worker_process_shutdown
 
 from app import db
 from app.ai_engine import ai_generate_additional_message, ai_map_fields_smart, ai_summarize_target
-from app.browser_async import BrowserPool
+from app.browser_selenium import BrowserPool
 from app.celery_app import celery_app
 from app.config import Config
 from app.models import Lead, PipelineStat, Submission, Target
-from app.search import search_firecrawl
+from app.search import search_primary
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,40 @@ def process_target_task(self, target_id: int):
         raise self.retry(exc=exc)
 
 
+# Excluded mega-brands (always filtered out post-discovery)
+EXCLUDED_MEGA_BRANDS = {
+    "blackrock", "vanguard", "fidelity", "state street", "goldman sachs",
+    "jp morgan", "morgan stanley", "bridgewater", "citadel", "two sigma",
+    "renaissance", "point72", "millennium", "baupost", "elliott",
+    "soros", "d.e. shaw", "marshall wace", "man group", "tci", "third point",
+    "brevan howard", "paulson", "pershing square", "icahn", "ackman",
+    "bain capital", "kkr", "carlyle", "blackstone", "apollo", "warburg",
+    "tpg", "softbank", "sequoia", "benchmark", "accel", "andreessen",
+    "bessemer", "index ventures", "insight partners", "lightspeed",
+    " Coatue", "tiger global", "d1", "viking", "glenview", "lone pine",
+    "valeant", "fairfax", "loeb", "greenlight", "tudor", "moore", "aqr",
+    "canyon", "oaktree", "oak hill", "silver lake", "thoma bravo",
+    "veritas", "general atlantic", "berkshire hathaway", "berkshire",
+    "nextera", "invesco", "pimco", "franklin templeton", "capital group",
+    "prudential", "metlife", "allianz", "axa", "ubs", "credit suisse",
+    "deutsche bank", "barclays", "hsbc", "bnpp", "societe generale",
+    "nomura", "mizuho", "daiwa", "macquarie", "lazard", "evercore",
+    "perella", "jefferies", "rbc", "td", "scotiabank", "bmo",
+    "wells fargo", "bank of america", "citi", "citigroup",
+}
+
+
+def _is_mega_brand(url: str, title: str = "") -> bool:
+    """Return True if URL/title contains a mega-brand we want to skip."""
+    combined = (url + " " + title).lower()
+    for brand in EXCLUDED_MEGA_BRANDS:
+        if brand in combined:
+            return True
+    return False
+
+
 AUTO_QUERIES = [
+    # ── Original queries that actually return results ─────────────────
     "hedge fund contact form",
     "family office contact us",
     "crypto fund manager contact",
@@ -158,6 +191,15 @@ AUTO_QUERIES = [
     "institutional digital asset platform contact",
     "asset management firm contact us",
     "prime brokerage crypto contact",
+    # Boutique-focused variants
+    "boutique hedge fund contact",
+    "emerging manager hedge fund contact form",
+    "mid-size family office contact",
+    "emerging venture capital firm contact",
+    "seed stage crypto fund contact",
+    "boutique investment manager contact",
+    "alternative investment boutique contact",
+    "boutique digital asset manager contact",
 ]
 
 
@@ -168,13 +210,20 @@ def discover_targets_task(limit: int = None):
     limit = limit or Config.PIPELINE_TARGET_DAILY
     with app.app_context():
         added = 0
+        skipped_big = 0
         for q in AUTO_QUERIES:
-            results = search_firecrawl(q, limit=10)
+            results = search_primary(q, limit=10)
             for r in results:
-                exists = Target.query.filter_by(url=r["url"]).first()
+                url = r["url"]
+                title = r.get("title", "")
+                if _is_mega_brand(url, title):
+                    skipped_big += 1
+                    logger.info("Skipped mega-brand target: %s (%s)", url, title)
+                    continue
+                exists = Target.query.filter_by(url=url).first()
                 if exists:
                     continue
-                t = Target(url=r["url"], title=r.get("title", ""), source_query=q)
+                t = Target(url=url, title=title, source_query=q)
                 db.session.add(t)
                 added += 1
                 if added >= limit:
@@ -182,8 +231,8 @@ def discover_targets_task(limit: int = None):
             if added >= limit:
                 break
         db.session.commit()
-        logger.info("Discovered %d new targets", added)
-        return {"added": added}
+        logger.info("Discovered %d new targets (skipped %d mega-brands)", added, skipped_big)
+        return {"added": added, "skipped_mega": skipped_big}
 
 
 @celery_app.task

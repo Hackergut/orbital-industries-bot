@@ -39,6 +39,9 @@ class Config:
         ),
     }
 
+    # DocSend
+    DOC_SEND_LINK = os.getenv("DOC_SEND_LINK", "https://docsend.com/view/jussvjemgx7rpgrx")
+
     # Admin
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "orbital2024")
@@ -59,6 +62,9 @@ class Config:
     AI_API_KEY = os.getenv("AI_API_KEY", os.getenv("OPENAI_API_KEY", ""))
     AI_MODEL = os.getenv("AI_MODEL", "llama3.1:8b")
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    # Fallback Ollama endpoint (used when primary is unavailable)
+    OLLAMA_HOST_2 = os.getenv("OLLAMA_HOST_2", "")
+    OLLAMA_API_KEY_2 = os.getenv("OLLAMA_API_KEY_2", "")
 
     # CAPTCHA
     TWOCAPTCHA_API_KEY = os.getenv("TWOCAPTCHA_API_KEY", "")
