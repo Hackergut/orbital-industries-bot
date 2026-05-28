@@ -1,3 +1,337 @@
-2026/05/25-04:15:30.970 1e Reusing MANIFEST /app/browser_data/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/25-04:15:30.986 1e Recovering log #34
-2026/05/25-04:15:30.988 1e Reusing old log /app/browser_data/Default/Local Storage/leveldb/000034.log 
+2026/05/25-04:04:11.566 dcdedc Reusing MANIFEST /Volumes/HRD2T/ORBITAL TECH 2/browser_data/Default/Local Storage/leveldb/MANIFEST-000001
+2026/05/25-04:04:11.568 dcdedc Recovering log #74
+2026/05/25-04:04:11.568 dcdedc Level-0 table #77: started
+2026/05/25-04:04:11.807 dcdedc Level-0 table #77: 48964 bytes OK
+2026/05/25-04:04:11.807 dcdedc Recovering log #77
+2026/05/25-04:04:11.807 dcdedc Reusing old log /Volumes/HRD2T/ORBITAL TECH 2/browser_data/Default/Local Storage/leveldb/000077.log 
+2026/05/25-04:04:11.960 dcdedc Delete type=0 #74
+2026/05/25-04:11:51.335 dcdede Level-0 table #79: started
+2026/05/25-04:11:53.146 dcdede Level-0 table #79: 39946 bytes OK
+2026/05/25-04:11:54.253 dcdede Delete type=0 #77
+2026/05/25-04:13:35.524 dcdede Level-0 table #81: started
+2026/05/25-04:13:36.095 dcdede Level-0 table #81: 38170 bytes OK
+2026/05/25-04:13:36.628 dcdede Delete type=0 #78
+2026/05/25-04:13:36.628 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-04:13:37.783 dcdede Generated table #82@0: 873 keys, 1171375 bytes
+2026/05/25-04:13:37.783 dcdede Compacted 4@0 + 1@1 files => 1171375 bytes
+2026/05/25-04:13:38.621 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:13:38.622 dcdede Delete type=2 #77
+2026/05/25-04:13:38.622 dcdede Delete type=2 #75
+2026/05/25-04:13:38.622 dcdede Delete type=2 #73
+2026/05/25-04:13:38.622 dcdede Delete type=2 #81
+2026/05/25-04:13:38.622 dcdede Delete type=2 #79
+2026/05/25-04:17:26.913 dcdede Level-0 table #84: started
+2026/05/25-04:17:27.360 dcdede Level-0 table #84: 23361 bytes OK
+2026/05/25-04:17:28.186 dcdede Delete type=0 #80
+2026/05/25-04:18:30.200 dcdede Level-0 table #86: started
+2026/05/25-04:18:30.784 dcdede Level-0 table #86: 27502 bytes OK
+2026/05/25-04:18:31.718 dcdede Delete type=0 #83
+2026/05/25-04:19:50.296 dcdede Level-0 table #88: started
+2026/05/25-04:19:51.145 dcdede Level-0 table #88: 21895 bytes OK
+2026/05/25-04:19:51.782 dcdede Delete type=0 #85
+2026/05/25-04:22:42.234 dcdede Level-0 table #90: started
+2026/05/25-04:22:42.813 dcdede Level-0 table #90: 22450 bytes OK
+2026/05/25-04:22:43.999 dcdede Delete type=0 #87
+2026/05/25-04:22:43.999 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-04:22:45.619 dcdede Generated table #91@0: 911 keys, 1183587 bytes
+2026/05/25-04:22:45.619 dcdede Compacted 4@0 + 1@1 files => 1183587 bytes
+2026/05/25-04:22:47.003 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:22:47.004 dcdede Delete type=2 #88
+2026/05/25-04:22:47.004 dcdede Delete type=2 #82
+2026/05/25-04:22:47.004 dcdede Delete type=2 #86
+2026/05/25-04:22:47.004 dcdede Delete type=2 #84
+2026/05/25-04:22:47.004 dcdede Delete type=2 #90
+2026/05/25-04:24:28.674 dcdede Level-0 table #93: started
+2026/05/25-04:24:29.338 dcdede Level-0 table #93: 35685 bytes OK
+2026/05/25-04:24:30.128 dcdede Delete type=0 #89
+2026/05/25-04:25:25.112 dcdee4 Level-0 table #95: started
+2026/05/25-04:25:25.988 dcdee4 Level-0 table #95: 943688 bytes OK
+2026/05/25-04:25:26.827 dcdee4 Delete type=0 #92
+2026/05/25-04:28:05.252 dcdee6 Level-0 table #97: started
+2026/05/25-04:28:06.327 dcdee6 Level-0 table #97: 31832 bytes OK
+2026/05/25-04:28:08.002 dcdee6 Delete type=0 #94
+2026/05/25-04:30:05.252 dcdede Level-0 table #99: started
+2026/05/25-04:30:05.851 dcdede Level-0 table #99: 29224 bytes OK
+2026/05/25-04:30:06.493 dcdede Delete type=0 #96
+2026/05/25-04:30:06.566 dce1b7 Compacting 4@0 + 1@1 files
+2026/05/25-04:30:07.703 dce1b7 Generated table #100@0: 972 keys, 1193198 bytes
+2026/05/25-04:30:07.703 dce1b7 Compacted 4@0 + 1@1 files => 1193198 bytes
+2026/05/25-04:30:08.360 dce1b7 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:30:08.380 dce1b7 Delete type=2 #99
+2026/05/25-04:30:08.380 dce1b7 Delete type=2 #95
+2026/05/25-04:30:08.380 dce1b7 Delete type=2 #97
+2026/05/25-04:30:08.380 dce1b7 Delete type=2 #93
+2026/05/25-04:30:08.380 dce1b7 Delete type=2 #91
+2026/05/25-04:31:46.910 dcdede Level-0 table #102: started
+2026/05/25-04:31:48.628 dcdede Level-0 table #102: 32483 bytes OK
+2026/05/25-04:31:49.544 dcdede Delete type=0 #98
+2026/05/25-04:33:58.460 dcdedc Level-0 table #104: started
+2026/05/25-04:33:59.280 dcdedc Level-0 table #104: 21857 bytes OK
+2026/05/25-04:34:01.069 dcdedc Delete type=0 #101
+2026/05/25-04:35:36.750 dcdede Level-0 table #106: started
+2026/05/25-04:35:37.242 dcdede Level-0 table #106: 27326 bytes OK
+2026/05/25-04:35:38.094 dcdede Delete type=0 #103
+2026/05/25-04:38:05.252 dcdede Level-0 table #108: started
+2026/05/25-04:38:05.761 dcdede Level-0 table #108: 30977 bytes OK
+2026/05/25-04:38:06.507 dcdede Delete type=0 #105
+2026/05/25-04:38:06.507 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-04:38:07.241 dcdede Generated table #109@0: 994 keys, 1191668 bytes
+2026/05/25-04:38:07.241 dcdede Compacted 4@0 + 1@1 files => 1191668 bytes
+2026/05/25-04:38:07.913 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:38:07.914 dcdede Delete type=2 #102
+2026/05/25-04:38:07.914 dcdede Delete type=2 #100
+2026/05/25-04:38:07.914 dcdede Delete type=2 #104
+2026/05/25-04:38:07.914 dcdede Delete type=2 #106
+2026/05/25-04:38:07.914 dcdede Delete type=2 #108
+2026/05/25-04:40:21.436 dcdedc Level-0 table #111: started
+2026/05/25-04:40:21.859 dcdedc Level-0 table #111: 18313 bytes OK
+2026/05/25-04:40:22.693 dcdedc Delete type=0 #107
+2026/05/25-04:42:05.296 dcdee4 Level-0 table #113: started
+2026/05/25-04:42:06.634 dcdee4 Level-0 table #113: 33334 bytes OK
+2026/05/25-04:42:07.230 dcdee4 Delete type=0 #110
+2026/05/25-04:44:25.258 dcdede Level-0 table #115: started
+2026/05/25-04:44:25.822 dcdede Level-0 table #115: 34085 bytes OK
+2026/05/25-04:44:26.962 dcdede Delete type=0 #112
+2026/05/25-04:46:25.157 dcdee4 Level-0 table #117: started
+2026/05/25-04:46:25.619 dcdee4 Level-0 table #117: 27670 bytes OK
+2026/05/25-04:46:26.469 dcdee4 Delete type=0 #114
+2026/05/25-04:46:26.469 dcdee4 Compacting 4@0 + 1@1 files
+2026/05/25-04:46:27.406 dcdee4 Generated table #118@0: 1039 keys, 1193049 bytes
+2026/05/25-04:46:27.406 dcdee4 Compacted 4@0 + 1@1 files => 1193049 bytes
+2026/05/25-04:46:28.240 dcdee4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:46:28.241 dcdee4 Delete type=2 #117
+2026/05/25-04:46:28.241 dcdee4 Delete type=2 #115
+2026/05/25-04:46:28.241 dcdee4 Delete type=2 #111
+2026/05/25-04:46:28.241 dcdee4 Delete type=2 #113
+2026/05/25-04:46:28.241 dcdee4 Delete type=2 #109
+2026/05/25-04:48:25.157 dcdee4 Level-0 table #120: started
+2026/05/25-04:48:26.101 dcdee4 Level-0 table #120: 23944 bytes OK
+2026/05/25-04:48:27.091 dcdee4 Delete type=0 #116
+2026/05/25-04:50:05.302 dcdee4 Level-0 table #122: started
+2026/05/25-04:50:06.202 dcdee4 Level-0 table #122: 34765 bytes OK
+2026/05/25-04:50:07.931 dcdee4 Delete type=0 #119
+2026/05/25-04:52:05.300 dcdedc Level-0 table #124: started
+2026/05/25-04:52:06.093 dcdedc Level-0 table #124: 24558 bytes OK
+2026/05/25-04:52:07.287 dcdedc Delete type=0 #121
+2026/05/25-04:53:28.718 dcdede Level-0 table #126: started
+2026/05/25-04:53:30.354 dcdede Level-0 table #126: 31271 bytes OK
+2026/05/25-04:53:31.923 dcdede Delete type=0 #123
+2026/05/25-04:53:31.929 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-04:53:32.490 dcdede Generated table #127@0: 1116 keys, 1200304 bytes
+2026/05/25-04:53:32.491 dcdede Compacted 4@0 + 1@1 files => 1200304 bytes
+2026/05/25-04:53:33.398 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:53:33.399 dcdede Delete type=2 #122
+2026/05/25-04:53:33.400 dcdede Delete type=2 #120
+2026/05/25-04:53:33.400 dcdede Delete type=2 #118
+2026/05/25-04:53:33.400 dcdede Delete type=2 #124
+2026/05/25-04:53:33.400 dcdede Delete type=2 #126
+2026/05/25-04:55:21.426 dcdede Level-0 table #129: started
+2026/05/25-04:55:21.787 dcdede Level-0 table #129: 96560 bytes OK
+2026/05/25-04:55:22.700 dcdede Delete type=0 #125
+2026/05/25-04:56:33.127 dcdede Level-0 table #131: started
+2026/05/25-04:56:35.030 dcdede Level-0 table #131: 108580 bytes OK
+2026/05/25-04:56:36.349 dcdede Delete type=0 #128
+2026/05/25-04:57:05.290 dcdede Level-0 table #133: started
+2026/05/25-04:57:05.967 dcdede Level-0 table #133: 83683 bytes OK
+2026/05/25-04:57:07.446 dcdede Delete type=0 #130
+2026/05/25-04:58:25.285 dcdee4 Level-0 table #135: started
+2026/05/25-04:58:25.973 dcdee4 Level-0 table #135: 29781 bytes OK
+2026/05/25-04:58:26.757 dcdee4 Delete type=0 #132
+2026/05/25-04:58:26.757 dcdee4 Compacting 4@0 + 1@1 files
+2026/05/25-04:58:28.670 dcdee4 Generated table #136@0: 1185 keys, 1276090 bytes
+2026/05/25-04:58:28.671 dcdee4 Compacted 4@0 + 1@1 files => 1276090 bytes
+2026/05/25-04:58:29.262 dcdee4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-04:58:29.269 dcdee4 Delete type=2 #129
+2026/05/25-04:58:29.269 dcdee4 Delete type=2 #135
+2026/05/25-04:58:29.270 dcdee4 Delete type=2 #131
+2026/05/25-04:58:29.270 dcdee4 Delete type=2 #133
+2026/05/25-04:58:29.270 dcdee4 Delete type=2 #127
+2026/05/25-05:00:32.699 dcdedc Level-0 table #138: started
+2026/05/25-05:00:33.092 dcdedc Level-0 table #138: 20680 bytes OK
+2026/05/25-05:00:33.707 dcdedc Delete type=0 #134
+2026/05/25-05:01:33.127 dcdee4 Level-0 table #140: started
+2026/05/25-05:01:36.371 dcdee4 Level-0 table #140: 31065 bytes OK
+2026/05/25-05:01:37.725 dcdee4 Delete type=0 #137
+2026/05/25-05:02:11.300 dcdedc Level-0 table #142: started
+2026/05/25-05:02:11.562 dcdedc Level-0 table #142: 19149 bytes OK
+2026/05/25-05:02:12.313 dcdedc Delete type=0 #139
+2026/05/25-05:02:25.153 dcdede Level-0 table #144: started
+2026/05/25-05:02:25.820 dcdede Level-0 table #144: 14299 bytes OK
+2026/05/25-05:02:26.595 dcdede Delete type=0 #141
+2026/05/25-05:02:26.595 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-05:02:27.247 dcdede Generated table #145@0: 1185 keys, 1289551 bytes
+2026/05/25-05:02:27.248 dcdede Compacted 4@0 + 1@1 files => 1289551 bytes
+2026/05/25-05:02:28.222 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:02:28.222 dcdede Delete type=2 #138
+2026/05/25-05:02:28.222 dcdede Delete type=2 #140
+2026/05/25-05:02:28.222 dcdede Delete type=2 #142
+2026/05/25-05:02:28.222 dcdede Delete type=2 #144
+2026/05/25-05:02:28.222 dcdede Delete type=2 #136
+2026/05/25-05:02:28.712 dcdef0 Level-0 table #147: started
+2026/05/25-05:02:29.386 dcdef0 Level-0 table #147: 13890 bytes OK
+2026/05/25-05:02:30.799 dcdef0 Delete type=0 #143
+2026/05/25-05:02:33.131 dcdedc Level-0 table #149: started
+2026/05/25-05:02:33.816 dcdedc Level-0 table #149: 18632 bytes OK
+2026/05/25-05:02:34.640 dcdedc Delete type=0 #146
+2026/05/25-05:04:05.306 dcdee4 Level-0 table #151: started
+2026/05/25-05:04:11.811 dcdee4 Level-0 table #151: 23166 bytes OK
+2026/05/25-05:04:12.800 dcdee4 Delete type=0 #148
+2026/05/25-05:05:05.500 dcdef0 Level-0 table #153: started
+2026/05/25-05:05:06.440 dcdef0 Level-0 table #153: 24418 bytes OK
+2026/05/25-05:05:08.819 dcdef0 Delete type=0 #150
+2026/05/25-05:05:08.819 dcdef0 Compacting 4@0 + 1@1 files
+2026/05/25-05:05:09.409 dcdef0 Generated table #154@0: 1207 keys, 1285940 bytes
+2026/05/25-05:05:09.409 dcdef0 Compacted 4@0 + 1@1 files => 1285940 bytes
+2026/05/25-05:05:11.122 dcdef0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:05:11.151 dcdef0 Delete type=2 #149
+2026/05/25-05:05:11.151 dcdef0 Delete type=2 #147
+2026/05/25-05:05:11.151 dcdef0 Delete type=2 #153
+2026/05/25-05:05:11.152 dcdef0 Delete type=2 #145
+2026/05/25-05:05:11.152 dcdef0 Delete type=2 #151
+2026/05/25-05:07:05.316 dcdee4 Level-0 table #156: started
+2026/05/25-05:07:06.465 dcdee4 Level-0 table #156: 22182 bytes OK
+2026/05/25-05:07:07.410 dcdee4 Delete type=0 #152
+2026/05/25-05:08:05.563 dcdee4 Level-0 table #158: started
+2026/05/25-05:08:06.070 dcdee4 Level-0 table #158: 25278 bytes OK
+2026/05/25-05:08:06.874 dcdee4 Delete type=0 #155
+2026/05/25-05:09:05.351 dcdee4 Level-0 table #160: started
+2026/05/25-05:09:06.049 dcdee4 Level-0 table #160: 28855 bytes OK
+2026/05/25-05:09:06.994 dcdee4 Delete type=0 #157
+2026/05/25-05:10:25.170 dcdede Level-0 table #162: started
+2026/05/25-05:10:25.977 dcdede Level-0 table #162: 28086 bytes OK
+2026/05/25-05:10:27.016 dcdede Delete type=0 #159
+2026/05/25-05:10:27.016 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-05:10:28.267 dcdede Generated table #163@0: 1272 keys, 1295401 bytes
+2026/05/25-05:10:28.268 dcdede Compacted 4@0 + 1@1 files => 1295401 bytes
+2026/05/25-05:10:29.527 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:10:29.528 dcdede Delete type=2 #160
+2026/05/25-05:10:29.528 dcdede Delete type=2 #162
+2026/05/25-05:10:29.528 dcdede Delete type=2 #158
+2026/05/25-05:10:29.528 dcdede Delete type=2 #154
+2026/05/25-05:10:29.528 dcdede Delete type=2 #156
+2026/05/25-05:11:25.112 dcdee4 Level-0 table #165: started
+2026/05/25-05:11:26.319 dcdee4 Level-0 table #165: 20923 bytes OK
+2026/05/25-05:11:27.020 dcdee4 Delete type=0 #161
+2026/05/25-05:12:25.110 dcdee4 Level-0 table #167: started
+2026/05/25-05:12:26.583 dcdee4 Level-0 table #167: 23572 bytes OK
+2026/05/25-05:12:27.495 dcdee4 Delete type=0 #164
+2026/05/25-05:14:00.502 dcdee4 Level-0 table #169: started
+2026/05/25-05:14:01.219 dcdee4 Level-0 table #169: 29778 bytes OK
+2026/05/25-05:14:04.240 dcdee4 Delete type=0 #166
+2026/05/25-05:15:25.107 dcdee4 Level-0 table #171: started
+2026/05/25-05:15:26.762 dcdee4 Level-0 table #171: 31050 bytes OK
+2026/05/25-05:15:27.672 dcdee4 Delete type=0 #168
+2026/05/25-05:15:27.672 dcdee4 Compacting 4@0 + 1@1 files
+2026/05/25-05:15:28.757 dcdee4 Generated table #172@0: 1336 keys, 1306076 bytes
+2026/05/25-05:15:28.757 dcdee4 Compacted 4@0 + 1@1 files => 1306076 bytes
+2026/05/25-05:15:29.615 dcdee4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:15:29.617 dcdee4 Delete type=2 #163
+2026/05/25-05:15:29.617 dcdee4 Delete type=2 #167
+2026/05/25-05:15:29.617 dcdee4 Delete type=2 #171
+2026/05/25-05:15:29.617 dcdee4 Delete type=2 #165
+2026/05/25-05:15:29.617 dcdee4 Delete type=2 #169
+2026/05/25-05:17:10.377 dcdede Level-0 table #174: started
+2026/05/25-05:17:11.132 dcdede Level-0 table #174: 23427 bytes OK
+2026/05/25-05:17:12.718 dcdede Delete type=0 #170
+2026/05/25-05:19:05.268 dcdedc Level-0 table #176: started
+2026/05/25-05:19:05.932 dcdedc Level-0 table #176: 19957 bytes OK
+2026/05/25-05:19:06.442 dcdedc Delete type=0 #173
+2026/05/25-05:20:33.082 dcdede Level-0 table #178: started
+2026/05/25-05:20:34.226 dcdede Level-0 table #178: 25641 bytes OK
+2026/05/25-05:20:34.952 dcdede Delete type=0 #175
+2026/05/25-05:21:58.353 dcdee4 Level-0 table #180: started
+2026/05/25-05:21:59.346 dcdee4 Level-0 table #180: 32763 bytes OK
+2026/05/25-05:22:00.398 dcdee4 Delete type=0 #177
+2026/05/25-05:22:00.399 dcdee4 Compacting 4@0 + 1@1 files
+2026/05/25-05:22:01.105 dcdee4 Generated table #181@0: 1439 keys, 1304041 bytes
+2026/05/25-05:22:01.105 dcdee4 Compacted 4@0 + 1@1 files => 1304041 bytes
+2026/05/25-05:22:01.756 dcdee4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:22:01.757 dcdee4 Delete type=2 #174
+2026/05/25-05:22:01.757 dcdee4 Delete type=2 #176
+2026/05/25-05:22:01.757 dcdee4 Delete type=2 #172
+2026/05/25-05:22:01.757 dcdee4 Delete type=2 #180
+2026/05/25-05:22:01.757 dcdee4 Delete type=2 #178
+2026/05/25-05:23:05.245 dce1b8 Level-0 table #183: started
+2026/05/25-05:23:06.367 dce1b8 Level-0 table #183: 26729 bytes OK
+2026/05/25-05:23:07.549 dce1b8 Delete type=0 #179
+2026/05/25-05:24:05.257 dcdede Level-0 table #185: started
+2026/05/25-05:24:05.879 dcdede Level-0 table #185: 21694 bytes OK
+2026/05/25-05:24:06.933 dcdede Delete type=0 #182
+2026/05/25-05:25:13.314 dcdee4 Level-0 table #187: started
+2026/05/25-05:25:14.150 dcdee4 Level-0 table #187: 22428 bytes OK
+2026/05/25-05:25:14.945 dcdee4 Delete type=0 #184
+2026/05/25-05:26:04.966 dcdede Level-0 table #189: started
+2026/05/25-05:26:05.408 dcdede Level-0 table #189: 21953 bytes OK
+2026/05/25-05:26:06.201 dcdede Delete type=0 #186
+2026/05/25-05:26:06.203 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-05:26:07.060 dcdede Generated table #190@0: 1515 keys, 1313441 bytes
+2026/05/25-05:26:07.061 dcdede Compacted 4@0 + 1@1 files => 1313441 bytes
+2026/05/25-05:26:08.006 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:26:08.007 dcdede Delete type=2 #189
+2026/05/25-05:26:08.007 dcdede Delete type=2 #183
+2026/05/25-05:26:08.007 dcdede Delete type=2 #181
+2026/05/25-05:26:08.007 dcdede Delete type=2 #185
+2026/05/25-05:26:08.007 dcdede Delete type=2 #187
+2026/05/25-05:27:16.480 dcdef0 Level-0 table #192: started
+2026/05/25-05:27:17.913 dcdef0 Level-0 table #192: 30142 bytes OK
+2026/05/25-05:27:19.975 dcdef0 Delete type=0 #188
+2026/05/25-05:27:33.134 dcdede Level-0 table #194: started
+2026/05/25-05:27:33.750 dcdede Level-0 table #194: 88914 bytes OK
+2026/05/25-05:27:34.979 dcdede Delete type=0 #191
+2026/05/25-05:28:35.267 dcdee4 Level-0 table #196: started
+2026/05/25-05:28:35.990 dcdee4 Level-0 table #196: 18552 bytes OK
+2026/05/25-05:28:36.909 dcdee4 Delete type=0 #193
+2026/05/25-05:29:35.274 dcdede Level-0 table #198: started
+2026/05/25-05:29:35.799 dcdede Level-0 table #198: 31793 bytes OK
+2026/05/25-05:29:36.692 dcdede Delete type=0 #195
+2026/05/25-05:29:36.692 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-05:29:37.188 dcdede Generated table #199@0: 1838 keys, 1411098 bytes
+2026/05/25-05:29:37.188 dcdede Compacted 4@0 + 1@1 files => 1411098 bytes
+2026/05/25-05:29:38.435 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:29:38.436 dcdede Delete type=2 #198
+2026/05/25-05:29:38.436 dcdede Delete type=2 #196
+2026/05/25-05:29:38.436 dcdede Delete type=2 #194
+2026/05/25-05:29:38.436 dcdede Delete type=2 #190
+2026/05/25-05:29:38.436 dcdede Delete type=2 #192
+2026/05/25-05:29:56.388 dcdee6 Level-0 table #201: started
+2026/05/25-05:29:57.837 dcdee6 Level-0 table #201: 78203 bytes OK
+2026/05/25-05:29:59.665 dcdee6 Delete type=0 #197
+2026/05/25-05:31:21.435 dcdede Level-0 table #203: started
+2026/05/25-05:31:22.285 dcdede Level-0 table #203: 24592 bytes OK
+2026/05/25-05:31:23.066 dcdede Delete type=0 #200
+2026/05/25-05:32:35.267 dcdede Level-0 table #205: started
+2026/05/25-05:32:35.753 dcdede Level-0 table #205: 26985 bytes OK
+2026/05/25-05:32:37.642 dcdede Delete type=0 #202
+2026/05/25-05:33:35.268 dcdee4 Level-0 table #207: started
+2026/05/25-05:33:36.419 dcdee4 Level-0 table #207: 29758 bytes OK
+2026/05/25-05:33:37.342 dcdee4 Delete type=0 #204
+2026/05/25-05:33:37.342 dcdee4 Compacting 4@0 + 1@1 files
+2026/05/25-05:33:38.136 dcdee4 Generated table #208@0: 1910 keys, 1414216 bytes
+2026/05/25-05:33:38.136 dcdee4 Compacted 4@0 + 1@1 files => 1414216 bytes
+2026/05/25-05:33:39.309 dcdee4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:33:39.310 dcdee4 Delete type=2 #203
+2026/05/25-05:33:39.310 dcdee4 Delete type=2 #201
+2026/05/25-05:33:39.310 dcdee4 Delete type=2 #205
+2026/05/25-05:33:39.310 dcdee4 Delete type=2 #199
+2026/05/25-05:33:39.310 dcdee4 Delete type=2 #207
+2026/05/25-05:35:05.300 dcdede Level-0 table #210: started
+2026/05/25-05:35:06.093 dcdede Level-0 table #210: 24750 bytes OK
+2026/05/25-05:35:07.234 dcdede Delete type=0 #206
+2026/05/25-05:36:05.321 dcdede Level-0 table #212: started
+2026/05/25-05:36:05.761 dcdede Level-0 table #212: 30800 bytes OK
+2026/05/25-05:36:06.880 dcdede Delete type=0 #209
+2026/05/25-05:37:21.436 dcdee4 Level-0 table #214: started
+2026/05/25-05:37:22.625 dcdee4 Level-0 table #214: 25224 bytes OK
+2026/05/25-05:37:23.546 dcdee4 Delete type=0 #211
+2026/05/25-05:38:16.180 dcdede Level-0 table #216: started
+2026/05/25-05:38:16.622 dcdede Level-0 table #216: 26604 bytes OK
+2026/05/25-05:38:17.588 dcdede Delete type=0 #213
+2026/05/25-05:38:17.589 dcdede Compacting 4@0 + 1@1 files
+2026/05/25-05:38:18.306 dcdede Generated table #217@0: 1996 keys, 1419722 bytes
+2026/05/25-05:38:18.306 dcdede Compacted 4@0 + 1@1 files => 1419722 bytes
+2026/05/25-05:38:19.827 dcdede compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/25-05:38:19.828 dcdede Delete type=2 #216
+2026/05/25-05:38:19.828 dcdede Delete type=2 #214
+2026/05/25-05:38:19.828 dcdede Delete type=2 #210
+2026/05/25-05:38:19.828 dcdede Delete type=2 #212
+2026/05/25-05:38:19.828 dcdede Delete type=2 #208

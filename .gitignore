@@ -55,3 +55,6 @@ worker_start_temporal.sh
 TEMPORAL_SETUP.md
 app/search.py.bak
 config_safe.py
+
+# Credentials file
+CREDENTIALS.txt

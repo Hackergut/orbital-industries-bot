@@ -34,9 +34,9 @@ services:
       - SELENIUM_RETRY_ATTEMPTS=3
       - TEMPORAL_HOST=host.docker.internal:7233
       - ADMIN_BYPASS_LOCAL=false
-      - SECRET_KEY=orbital-industries-2026-prod
+      - SECRET_KEY=e8cd5a76b6c95d5bea9b7704af81228963b724745fd1dd2678102b87ac457a57
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=change-me-now
+      - ADMIN_PASSWORD=gApiUQotVmc_sC6WZw6O_YlF0LrCmDh9
     depends_on:
       redis:
         condition: service_healthy
